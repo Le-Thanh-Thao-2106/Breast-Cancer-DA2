@@ -1,0 +1,91 @@
+
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đăng nhập | Breast-Cancer SVM</title>
+    <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="compact.css"><link rel="stylesheet" href="upgrade.css"></head>
+
+<body class="auth-body">
+
+<div class="auth-container">
+
+    <div class="auth-left">
+        <div class="auth-brand">
+            <div class="brand-icon">✚</div>
+            <div>
+                <h2>Breast-Cancer</h2>
+                <span>SVM Research Platform</span>
+            </div>
+        </div>
+
+        <div class="auth-intro">
+            <span class="welcome-tag">WELCOME TO BREASTCARE</span>
+            <h1>Khám phá dữ liệu.<br>Trải nghiệm công nghệ.</h1>
+            <p>
+                Nền tảng trải nghiệm mô hình học máy SVM
+                trong phân loại dữ liệu tế bào học tuyến vú.
+            </p>
+            <div class="auth-decoration">♡</div>
+        </div>
+
+        <div class="auth-footer">
+            Breast-Cancer SVM © 2026
+        </div>
+    </div>
+
+    <div class="auth-right">
+
+        <div class="auth-form">
+
+            <div class="auth-heading">
+                <h1>Chào mừng trở lại!</h1>
+                <p>Đăng nhập để tiếp tục trải nghiệm hệ thống.</p>
+            </div>
+
+            
+            <div class="sso-login-section">
+
+                <p style="margin-bottom: 20px;">
+                    Sử dụng tài khoản Identity Center
+                    để đăng nhập vào Breast-Cancer SVM.
+                </p>
+
+                <button
+                    type="button"
+                    id="ssoLoginBtn"
+                    class="auth-button"
+                >
+                    Đăng nhập với Identity Center
+                </button>
+
+                <p id="ssoMessage" class="auth-message"></p>
+
+            </div>
+
+            <p class="register-link"><a href="http://localhost:3000/forgot-password.html?from=breastcare">Quên mật khẩu?</a></p>
+            <p class="register-link">
+                Chưa có tài khoản?
+                <a href="http://localhost:3000/register.html?from=breastcare">
+                    Đăng ký tại Identity Center
+                </a>
+            </p>
+
+            <p class="auth-warning">
+                Hệ thống phục vụ mục đích học tập và nghiên cứu,
+                không thay thế chẩn đoán y khoa.
+            </p>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script src="sso-config.js"></script>
+<script src="auth.js"></script>
+
+</body>
+</html>
