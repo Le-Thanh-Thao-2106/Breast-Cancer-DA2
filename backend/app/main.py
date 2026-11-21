@@ -327,26 +327,78 @@ def _db(method,path,payload=None):
     except (URLError,TimeoutError):
         raise HTTPException(status_code=502,detail='Không kết nối được Supabase.')
 
+
 class HistorySession(BaseModel):
-    id: str = Field(min_length=1,max_length=100)
+    id: str = Field(min_length=1, max_length=100)
     type: str
     analyzedAt: str
-    filename: str = Field(default='',max_length=255)
-    sampleCount: int = Field(ge=1,le=200)
+    filename: str = Field(default='', max_length=255)
+    sampleCount: int = Field(ge=1, le=200)
     kernels: list[str]
-    summary: list[dict] = Field(default_factory=list)
-    results: list[dict] = Field(default_factory=list)
+    summary: list[dict] | dict = Field(default_factory=list)
+    results: list[dict] | dict = Field(default_factory=list)
+
 
 @app.post('/history/sessions')
-def create_session(session:HistorySession,authorization:str=Header(default='')):
-    user=_identity(authorization)
-    if session.type!='batch': raise HTTPException(status_code=422,detail='Only batch sessions currently supported.')
+def create_session(
+    session: HistorySession,
+    authorization: str = Header(default='')
+):
+    user = _identity(authorization)
+
+    if session.type not in ('single', 'batch'):
+        raise HTTPException(
+            status_code=422,
+            detail='Loại phân tích không hợp lệ.'
+        )
+
     _validate_kernels(session.kernels)
-    if len(session.results)!=len(session.kernels) or any(len(r.get('predictions',[]))!=session.sampleCount for r in session.results):
-        raise HTTPException(status_code=422,detail='Số mẫu/kernel không khớp.')
-    record={'id':session.id,'user_id':user['sub'],'user_email':user.get('email'),'kind':'batch','filename':session.filename,'sample_count':session.sampleCount,'kernels':session.kernels,'summary':session.summary,'details':{'results':session.results}}
-    _db('POST','bc_analysis_sessions',record)
-    return {'saved':True,'id':session.id}
+
+    if session.type == 'single':
+        if session.sampleCount != 1:
+            raise HTTPException(
+                status_code=422,
+                detail='Phân tích 1 mẫu phải có sampleCount = 1.'
+            )
+        if not isinstance(session.summary, dict) or not isinstance(session.results, dict):
+            raise HTTPException(
+                status_code=422,
+                detail='Dữ liệu phân tích 1 mẫu không hợp lệ.'
+            )
+    else:
+        if not isinstance(session.summary, list) or not isinstance(session.results, list):
+            raise HTTPException(
+                status_code=422,
+                detail='Dữ liệu phân tích Batch không hợp lệ.'
+            )
+        if len(session.results) != len(session.kernels) or any(
+            not isinstance(r, dict)
+            or len(r.get('predictions', [])) != session.sampleCount
+            for r in session.results
+        ):
+            raise HTTPException(
+                status_code=422,
+                detail='Số mẫu/kernel không khớp.'
+            )
+
+    record = {
+        'id': session.id,
+        'user_id': user['sub'],
+        'user_email': user.get('email'),
+        'kind': session.type,
+        'filename': session.filename,
+        'sample_count': session.sampleCount,
+        'kernels': session.kernels,
+        'summary': session.summary,
+        'details': {
+            'results': session.results,
+            'analyzedAt': session.analyzedAt
+        }
+    }
+
+    _db('POST', 'bc_analysis_sessions', record)
+
+    return {'saved': True, 'id': session.id}
 
 @app.get('/history/sessions')
 def list_sessions(authorization:str=Header(default='')):
