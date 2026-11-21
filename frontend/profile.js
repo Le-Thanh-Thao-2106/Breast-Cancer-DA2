@@ -4,7 +4,7 @@ document.addEventListener('DOMContentLoaded',()=>{
  document.getElementById('switchAccount')?.addEventListener('click',()=>{
   sessionStorage.removeItem('bc_access_token');sessionStorage.removeItem('bc_user');
   sessionStorage.removeItem('bc_code_verifier');sessionStorage.removeItem('bc_oauth_state');
-  window.location.assign('http://localhost:3000/switch-account.html');
+  window.location.assign('http://https://identity-center.onrender.com/switch-account.html');
  });
 });
 
