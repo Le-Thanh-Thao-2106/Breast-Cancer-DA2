@@ -4,7 +4,7 @@ const SSO_CONFIG = {
 
     clientId: "c3154578-4789-4299-823e-eb8688ec620a",
 
-    redirectUri: "http://127.0.0.1:5500/frontend/index.html",
+    redirectUri: "https://breast-cancer-da2.onrender.com/index.html",
 
     scope: "email profile"
 };
