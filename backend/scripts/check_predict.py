@@ -7,7 +7,7 @@ bundle = load_breast_cancer(as_frame=True)
 sample = bundle.data.iloc[0].to_dict()
 
 response = httpx.post(
-    "http://127.0.0.1:8000/predict",
+    "https://breast-cancer-da2-api.onrender.com/predict",
     json={
         "features": sample
     }
