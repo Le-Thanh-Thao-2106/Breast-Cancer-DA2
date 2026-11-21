@@ -47,28 +47,38 @@ function getHistory() {
 
 function normalizeCloudSession(session) {
     const summary = session.summary || {};
+    const details = session.details || {};
 
     if (session.kind === "batch") {
         return {
             id: session.id,
             type: "batch",
-            analyzedAt: session.created_at,
+            analyzedAt: details.analyzedAt || session.created_at,
             filename: session.filename || "",
             sampleCount: session.sample_count,
             kernels: session.kernels || [],
-            summary: summary
+            summary: summary,
+            results: details.results || []
         };
     }
+
+    const results = details.results || {};
 
     return {
         id: session.id,
         type: "single",
-        analyzedAt: session.created_at,
+        analyzedAt: details.analyzedAt || session.created_at,
+
+        predictedClass: summary.predicted_class,
         predictedLabel: summary.predicted_label || "",
+
         probabilityMalignant: summary.probability_malignant,
         probabilityBenign: summary.probability_benign,
+
         modelVersion: (session.kernels || []).join(", "),
-        kernels: session.kernels || []
+        kernels: session.kernels || [],
+
+        features: results.features || {}
     };
 }
 

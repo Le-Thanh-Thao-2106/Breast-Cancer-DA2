@@ -403,7 +403,7 @@ def create_session(
 @app.get('/history/sessions')
 def list_sessions(authorization:str=Header(default='')):
     user=_identity(authorization)
-    path='bc_analysis_sessions?select=id,kind,created_at,filename,sample_count,kernels,summary&user_id=eq.'+quote(user['sub'],safe='')+'&order=created_at.desc&limit=200'
+    path='bc_analysis_sessions?select=id,kind,created_at,filename,sample_count,kernels,summary,details&user_id=eq.'+quote(user['sub'],safe='')+'&order=created_at.desc&limit=200'
     return {'sessions':_db('GET',path)}
 
 @app.get('/admin/statistics')
