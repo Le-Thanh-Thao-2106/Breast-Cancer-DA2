@@ -149,7 +149,7 @@ function logoutSSO() {
     sessionStorage.removeItem("bc_oauth_state");
 
     // Đăng xuất cả Identity Center để lần sau có thể chọn tài khoản khác.
-    window.location.replace("http://https://identity-center.onrender.com/switch-account.html?from=breastcare");
+    window.location.replace("https://identity-center.onrender.com/switch-account.html?from=breastcare");
 }
 
 function displaySSOUser(user) {
