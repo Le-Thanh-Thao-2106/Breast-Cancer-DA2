@@ -406,6 +406,33 @@ def list_sessions(authorization:str=Header(default='')):
     path='bc_analysis_sessions?select=id,kind,created_at,filename,sample_count,kernels,summary,details&user_id=eq.'+quote(user['sub'],safe='')+'&order=created_at.desc&limit=200'
     return {'sessions':_db('GET',path)}
 
+
+@app.delete('/history/sessions/{session_id}')
+def delete_session(
+    session_id: str,
+    authorization: str = Header(default='')
+):
+    user = _identity(authorization)
+
+    if not session_id or len(session_id) > 100:
+        raise HTTPException(
+            status_code=400,
+            detail='ID phiên phân tích không hợp lệ.'
+        )
+
+    path = (
+        'bc_analysis_sessions'
+        '?id=eq.' + quote(session_id, safe='')
+        + '&user_id=eq.' + quote(user['sub'], safe='')
+    )
+
+    _db('DELETE', path)
+
+    return {
+        'deleted': True,
+        'id': session_id
+    }
+
 @app.get('/admin/statistics')
 def admin_statistics(authorization:str=Header(default='')):
     user=_identity(authorization)

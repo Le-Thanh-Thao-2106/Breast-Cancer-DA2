@@ -1,5 +1,12 @@
 
-window.bcSaveCloudSession = async function (session) {
+const BC_HISTORY_API =
+    "https://breast-cancer-da2-api.onrender.com/history/sessions";
+
+// =====================================
+// 1. LẤY TOKEN ĐĂNG NHẬP
+// =====================================
+
+function bcGetAccessToken() {
     const token = sessionStorage.getItem("bc_access_token");
 
     if (!token) {
@@ -7,21 +14,30 @@ window.bcSaveCloudSession = async function (session) {
         throw new Error("Chưa có OAuth token");
     }
 
-    const res = await fetch(
-        "https://breast-cancer-da2-api.onrender.com/history/sessions",
-        {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": "Bearer " + token
-            },
-            body: JSON.stringify(session)
-        }
-    );
+    return token;
+}
+
+
+// =====================================
+// 2. LƯU LỊCH SỬ LÊN SUPABASE
+// =====================================
+
+window.bcSaveCloudSession = async function (session) {
+    const token = bcGetAccessToken();
+
+    const res = await fetch(BC_HISTORY_API, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": "Bearer " + token
+        },
+        body: JSON.stringify(session)
+    });
 
     const responseText = await res.text();
 
     let data;
+
     try {
         data = JSON.parse(responseText);
     } catch {
@@ -44,34 +60,77 @@ window.bcSaveCloudSession = async function (session) {
     }
 
     console.log("Lưu lịch sử thành công:", data);
+
     return data;
 };
 
 
+// =====================================
+// 3. TẢI LỊCH SỬ TỪ SUPABASE
+// =====================================
+
 window.bcLoadCloudSessions = async function () {
-    const token = sessionStorage.getItem("bc_access_token");
+    const token = bcGetAccessToken();
 
-    if (!token) {
-        throw new Error("Chưa có OAuth token");
-    }
-
-    const res = await fetch(
-        "https://breast-cancer-da2-api.onrender.com/history/sessions",
-        {
-            method: "GET",
-            headers: {
-                "Authorization": "Bearer " + token
-            }
+    const res = await fetch(BC_HISTORY_API, {
+        method: "GET",
+        headers: {
+            "Authorization": "Bearer " + token
         }
-    );
+    });
 
     if (!res.ok) {
-        throw new Error("Không tải được lịch sử. HTTP " + res.status);
+        throw new Error(
+            "Không tải được lịch sử. HTTP " + res.status
+        );
     }
 
     const data = await res.json();
 
     console.log("Lịch sử tải từ Supabase:", data);
+
+    return data;
+};
+
+
+// =====================================
+// 4. XÓA MỘT BẢN GHI TRÊN SUPABASE
+// =====================================
+
+window.bcDeleteCloudSession = async function (sessionId) {
+    const token = bcGetAccessToken();
+
+    if (!sessionId) {
+        throw new Error("ID phiên phân tích không hợp lệ");
+    }
+
+    const url =
+        BC_HISTORY_API + "/" + encodeURIComponent(sessionId);
+
+    const res = await fetch(url, {
+        method: "DELETE",
+        headers: {
+            "Authorization": "Bearer " + token
+        }
+    });
+
+    if (!res.ok) {
+        const errorText = await res.text();
+
+        console.error("Lỗi xóa lịch sử:", {
+            status: res.status,
+            detail: errorText
+        });
+
+        throw new Error(
+            "Không xóa được lịch sử. HTTP "
+            + res.status + ": " + errorText
+        );
+    }
+
+    const data = await res.json();
+
+    console.log("Yêu cầu xóa lịch sử thành công:", data);
 
     return data;
 };

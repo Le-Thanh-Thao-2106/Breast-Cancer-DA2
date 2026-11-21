@@ -380,8 +380,7 @@ function showDetail(id) {
 // 7. DELETE ONE RECORD
 // =====================================
 
-function deleteRecord(id) {
-
+async function deleteRecord(id) {
     const confirmed = confirm(
         "Bạn có chắc chắn muốn xóa lần phân tích này?"
     );
@@ -390,17 +389,39 @@ function deleteRecord(id) {
         return;
     }
 
-    const history = getHistory();
+    try {
+        if (typeof window.bcDeleteCloudSession !== "function") {
+            throw new Error("Chưa kết nối chức năng xóa Supabase");
+        }
 
-    const updatedHistory = history.filter(
-        item => String(item.id) !== String(id)
-    );
+        // Xóa trên Supabase trước
+        await window.bcDeleteCloudSession(id);
 
-    saveHistory(updatedHistory);
+        // Chỉ cập nhật Local Storage khi API thành công
+        const history = getHistory();
 
-    detailSection.style.display = "none";
+        const updatedHistory = history.filter(
+            item => String(item.id) !== String(id)
+        );
 
-    renderHistory();
+        saveHistory(updatedHistory);
+
+        // Đóng phần chi tiết
+        detailSection.style.display = "none";
+
+        // Cập nhật bảng lịch sử
+        renderHistory();
+
+        alert("Đã xóa lịch sử phân tích thành công.");
+
+    } catch (error) {
+        console.error("Lỗi xóa lịch sử:", error);
+
+        alert(
+            "Không thể xóa lịch sử trên Supabase: "
+            + error.message
+        );
+    }
 }
 
 
@@ -433,8 +454,8 @@ tableBody.addEventListener("click", event => {
 // 9. CLEAR ALL HISTORY
 // =====================================
 
-clearButton.addEventListener("click", () => {
 
+clearButton.addEventListener("click", async () => {
     const history = getHistory();
 
     if (history.length === 0) {
@@ -443,22 +464,73 @@ clearButton.addEventListener("click", () => {
     }
 
     const confirmed = confirm(
-        "Bạn có chắc chắn muốn xóa toàn bộ lịch sử phân tích?"
+        "Bạn có chắc chắn muốn xóa toàn bộ lịch sử phân tích? " +
+        "Dữ liệu đã xóa trên Supabase sẽ không thể khôi phục."
     );
 
     if (!confirmed) {
         return;
     }
 
-    saveHistory([]);
+    if (typeof window.bcDeleteCloudSession !== "function" ||
+        typeof window.bcLoadCloudSessions !== "function") {
+        alert("Chưa kết nối chức năng xóa lịch sử Supabase.");
+        return;
+    }
 
-    detailSection.style.display = "none";
+    clearButton.disabled = true;
 
-    renderHistory();
+    try {
+        // Tải danh sách mới nhất của tài khoản từ Supabase
+        const data = await window.bcLoadCloudSessions();
+        const sessions = data.sessions || [];
 
-    alert("Đã xóa toàn bộ lịch sử phân tích.");
+        let deletedCount = 0;
 
+        // Xóa lần lượt từng bản ghi trên Supabase
+        for (const session of sessions) {
+            await window.bcDeleteCloudSession(session.id);
+            deletedCount++;
+        }
+
+        // Chỉ xóa Local Storage khi tất cả yêu cầu thành công
+        saveHistory([]);
+
+        detailSection.style.display = "none";
+        renderHistory();
+
+        alert(
+            "Đã xóa thành công " +
+            deletedCount +
+            " bản ghi lịch sử."
+        );
+
+    } catch (error) {
+        console.error("Lỗi xóa toàn bộ lịch sử:", error);
+
+        // Tải lại các bản ghi còn lại nếu quá trình xóa bị gián đoạn
+        try {
+            const data = await window.bcLoadCloudSessions();
+
+            saveHistory(
+                (data.sessions || []).map(normalizeCloudSession)
+            );
+
+            renderHistory();
+        } catch (reloadError) {
+            console.error("Không thể tải lại lịch sử:", reloadError);
+        }
+
+        alert(
+            "Chưa thể xóa toàn bộ lịch sử: " +
+            error.message
+        );
+
+    } finally {
+        clearButton.disabled = false;
+    }
 });
+
 
 
 // =====================================
