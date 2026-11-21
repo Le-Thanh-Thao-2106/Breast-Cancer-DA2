@@ -225,6 +225,40 @@ form.addEventListener("submit", async (event) => {
             JSON.stringify(analysisHistory)
         );
 
+        
+        try {
+            const cloudSession = {
+                id: "single_" + Date.now(),
+                type: "single",
+                analyzedAt: new Date().toISOString(),
+                filename: "",
+                sampleCount: 1,
+                kernels: selectedKernels,
+
+                summary: {
+                    predicted_class: data.predicted_class,
+                    predicted_label: data.predicted_label,
+                    probability_malignant: data.probability_malignant,
+                    probability_benign: data.probability_benign,
+                    elapsed_ms: predictionElapsedMs
+                },
+
+                results: {
+                    features: features,
+                    predictions: compareData.results
+                }
+            };
+
+            if (typeof window.bcSaveCloudSession === "function") {
+                await window.bcSaveCloudSession(cloudSession);
+                console.log("Đã lưu phân tích 1 mẫu lên Supabase");
+            } else {
+                console.warn("Chưa tải cloud-history.js");
+            }
+        } catch (error) {
+            console.error("Không lưu được lịch sử Supabase:", error);
+        }
+
 
 
         /* =========================
