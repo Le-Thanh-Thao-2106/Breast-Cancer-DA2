@@ -45,6 +45,34 @@ function getHistory() {
     }
 }
 
+function normalizeCloudSession(session) {
+    const summary = session.summary || {};
+
+    if (session.kind === "batch") {
+        return {
+            id: session.id,
+            type: "batch",
+            analyzedAt: session.created_at,
+            filename: session.filename || "",
+            sampleCount: session.sample_count,
+            kernels: session.kernels || [],
+            summary: summary
+        };
+    }
+
+    return {
+        id: session.id,
+        type: "single",
+        analyzedAt: session.created_at,
+        predictedLabel: summary.predicted_label || "",
+        probabilityMalignant: summary.probability_malignant,
+        probabilityBenign: summary.probability_benign,
+        modelVersion: (session.kernels || []).join(", "),
+        kernels: session.kernels || []
+    };
+}
+
+
 
 // =====================================
 // 2. SAVE HISTORY
@@ -437,8 +465,46 @@ closeDetailButton.addEventListener("click", () => {
 });
 
 
+
 // =====================================
 // 11. INITIALIZE
 // =====================================
 
-renderHistory();
+async function initializeHistory() {
+    // Hiển thị lịch sử đang có trên trình duyệt
+    renderHistory();
+
+    try {
+        if (typeof window.bcLoadCloudSessions !== "function") {
+            console.warn("Chưa tải cloud-history.js");
+            return;
+        }
+
+        // Lấy lịch sử từ Supabase
+        const data = await window.bcLoadCloudSessions();
+
+        const cloudHistory = (data.sessions || [])
+            .map(normalizeCloudSession);
+
+        // Cập nhật bộ nhớ trình duyệt
+        saveHistory(cloudHistory);
+
+        // Hiển thị lại bảng lịch sử
+        renderHistory();
+
+        console.log(
+            "Đã đồng bộ",
+            cloudHistory.length,
+            "bản ghi từ Supabase"
+        );
+
+    } catch (error) {
+        console.error(
+            "Không tải được lịch sử Supabase:",
+            error
+        );
+    }
+}
+
+initializeHistory();
+

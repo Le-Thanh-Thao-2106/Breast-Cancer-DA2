@@ -46,3 +46,32 @@ window.bcSaveCloudSession = async function (session) {
     console.log("Lưu lịch sử thành công:", data);
     return data;
 };
+
+
+window.bcLoadCloudSessions = async function () {
+    const token = sessionStorage.getItem("bc_access_token");
+
+    if (!token) {
+        throw new Error("Chưa có OAuth token");
+    }
+
+    const res = await fetch(
+        "https://breast-cancer-da2-api.onrender.com/history/sessions",
+        {
+            method: "GET",
+            headers: {
+                "Authorization": "Bearer " + token
+            }
+        }
+    );
+
+    if (!res.ok) {
+        throw new Error("Không tải được lịch sử. HTTP " + res.status);
+    }
+
+    const data = await res.json();
+
+    console.log("Lịch sử tải từ Supabase:", data);
+
+    return data;
+};
