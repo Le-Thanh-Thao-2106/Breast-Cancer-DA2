@@ -1,10 +1,9 @@
 
-const STORAGE_KEY = getUserHistoryKey();
 
 function getHistory() {
     try {
         const history = JSON.parse(
-            localStorage.getItem(STORAGE_KEY) || "[]"
+            localStorage.getItem(getUserHistoryKey()) || "[]"
         );
 
         return Array.isArray(history) ? history : [];
@@ -114,4 +113,4 @@ function renderStatistics() {
 }
 
 // Khởi chạy khi trang được tải
-document.addEventListener("DOMContentLoaded", renderStatistics);
+document.addEventListener("bc:account-ready", renderStatistics);

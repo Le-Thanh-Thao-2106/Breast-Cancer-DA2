@@ -46,30 +46,16 @@
             </div>
 
             
-            <div class="sso-login-section">
-
-                <p style="margin-bottom: 20px;">
-                    Sử dụng tài khoản Identity Center
-                    để đăng nhập vào Breast-Cancer SVM.
-                </p>
-
-                <button
-                    type="button"
-                    id="ssoLoginBtn"
-                    class="auth-button"
-                >
-                    Đăng nhập với Identity Center
-                </button>
-
-                <p id="ssoMessage" class="auth-message"></p>
-
-            </div>
-
+            <form id="loginForm">
+                <label for="loginEmail">Email</label>
+                <input id="loginEmail" type="email" autocomplete="username" maxlength="254" required>
+                <label for="loginPassword">Mật khẩu</label>
+                <input id="loginPassword" type="password" autocomplete="current-password" maxlength="128" required>
+                <button type="submit" class="auth-button">Đăng nhập</button>
+                <p id="ssoMessage" class="auth-message" role="status"></p>
+            </form>
             <p class="register-link">
-                Chưa có tài khoản?
-                <a href="https://identity-center.onrender.com/register.html?from=breastcare">
-                    Đăng ký tại Identity Center
-                </a>
+                Chưa có tài khoản? <a href="register.html">Đăng ký</a>
             </p>
 
             <p class="auth-warning">
@@ -83,7 +69,7 @@
 
 </div>
 
-<script src="sso-config.js"></script>
+
 <script src="auth.js"></script>
 
 </body>

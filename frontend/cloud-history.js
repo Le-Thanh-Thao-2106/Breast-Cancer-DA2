@@ -1,35 +1,11 @@
-
-const BC_HISTORY_API =
-    "https://breast-cancer-da2-api.onrender.com/history/sessions";
-
-// =====================================
-// 1. LẤY TOKEN ĐĂNG NHẬP
-// =====================================
-
-function bcGetAccessToken() {
-    const token = sessionStorage.getItem("bc_access_token");
-
-    if (!token) {
-        console.error("Không tìm thấy bc_access_token");
-        throw new Error("Chưa có OAuth token");
-    }
-
-    return token;
-}
-
-
-// =====================================
-// 2. LƯU LỊCH SỬ LÊN SUPABASE
-// =====================================
+const BC_HISTORY_API = "/history/sessions";
 
 window.bcSaveCloudSession = async function (session) {
-    const token = bcGetAccessToken();
 
     const res = await fetch(BC_HISTORY_API, {
         method: "POST",
         headers: {
-            "Content-Type": "application/json",
-            "Authorization": "Bearer " + token
+            "Content-Type": "application/json"
         },
         body: JSON.stringify(session)
     });
@@ -70,14 +46,8 @@ window.bcSaveCloudSession = async function (session) {
 // =====================================
 
 window.bcLoadCloudSessions = async function () {
-    const token = bcGetAccessToken();
 
-    const res = await fetch(BC_HISTORY_API, {
-        method: "GET",
-        headers: {
-            "Authorization": "Bearer " + token
-        }
-    });
+    const res = await fetch(BC_HISTORY_API);
 
     if (!res.ok) {
         throw new Error(
@@ -98,7 +68,6 @@ window.bcLoadCloudSessions = async function () {
 // =====================================
 
 window.bcDeleteCloudSession = async function (sessionId) {
-    const token = bcGetAccessToken();
 
     if (!sessionId) {
         throw new Error("ID phiên phân tích không hợp lệ");
@@ -108,10 +77,7 @@ window.bcDeleteCloudSession = async function (sessionId) {
         BC_HISTORY_API + "/" + encodeURIComponent(sessionId);
 
     const res = await fetch(url, {
-        method: "DELETE",
-        headers: {
-            "Authorization": "Bearer " + token
-        }
+        method: "DELETE"
     });
 
     if (!res.ok) {

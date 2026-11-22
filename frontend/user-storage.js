@@ -1,5 +1,5 @@
 
-/* Quản lý lịch sử riêng theo tài khoản SSO */
+/* Quản lý lịch sử riêng theo tài khoản BreastCare */
 
 function getCurrentUserId() {
     try {
@@ -7,7 +7,7 @@ function getCurrentUserId() {
             sessionStorage.getItem("bc_user") || "null"
         );
 
-        // Supabase OAuth UserInfo thường cung cấp sub.
+        // API hồ sơ cung cấp UUID qua trường sub.
         const userId = user?.sub || user?.id;
 
         if (!userId || typeof userId !== "string") {
@@ -17,7 +17,7 @@ function getCurrentUserId() {
         return userId;
     } catch (error) {
         throw new Error(
-            "Không xác định được tài khoản SSO. Vui lòng đăng nhập lại."
+            "Không xác định được tài khoản BreastCare. Vui lòng đăng nhập lại."
         );
     }
 }

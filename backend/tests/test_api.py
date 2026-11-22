@@ -30,3 +30,28 @@ def test_metadata_has_30_features():
 
     assert r.status_code == 200
     assert len(r.json()["feature_names"]) == 30
+
+
+def test_account_pages_and_cookie_required():
+    assert 'id="loginForm"' in client.get('/login.html').text
+    assert 'id="registerForm"' in client.get('/register.html').text
+    assert client.get('/account/profile').status_code == 401
+    assert client.get('/history/sessions').status_code == 401
+    assert client.get('/admin/overview').status_code == 401
+
+
+def test_account_validation_does_not_echo_password():
+    password = 'short'
+    response = client.post('/account/register', json={
+        'email': 'new@example.com', 'full_name': 'New', 'password': password,
+    })
+    assert response.status_code == 422
+    assert password not in response.text
+
+
+def test_cross_site_login_is_rejected():
+    response = client.post('/account/login',
+        headers={'Origin': 'https://elsewhere.example'},
+        json={'email': 'new@example.com', 'password': 'some-password'},
+    )
+    assert response.status_code == 403

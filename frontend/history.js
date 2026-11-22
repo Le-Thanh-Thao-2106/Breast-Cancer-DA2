@@ -3,7 +3,6 @@
    BREASTCARE SVM - HISTORY MANAGEMENT
 ===================================== */
 
-const STORAGE_KEY = getUserHistoryKey();
 
 // DOM elements
 const tableBody = document.getElementById("historyTableBody");
@@ -34,7 +33,7 @@ const closeDetailButton = document.getElementById("closeDetailButton");
 function getHistory() {
     try {
         const history = JSON.parse(
-            localStorage.getItem(STORAGE_KEY) || "[]"
+            localStorage.getItem(getUserHistoryKey()) || "[]"
         );
 
         return Array.isArray(history) ? history : [];
@@ -90,7 +89,7 @@ function normalizeCloudSession(session) {
 
 function saveHistory(history) {
     localStorage.setItem(
-        STORAGE_KEY,
+        getUserHistoryKey(),
         JSON.stringify(history)
     );
 }
@@ -588,5 +587,5 @@ async function initializeHistory() {
     }
 }
 
-initializeHistory();
+document.addEventListener("bc:account-ready", initializeHistory);
 

@@ -2,9 +2,16 @@ from pathlib import Path
 import json, joblib
 import  numpy as np
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.exception_handlers import request_validation_exception_handler
+from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
+from psycopg.errors import UniqueViolation
+from psycopg.types.json import Jsonb
+from pydantic import BaseModel, Field
+from .accounts import database, identity, require_admin, require_same_origin, router as account_router
 
 
 # =========================
@@ -42,7 +49,7 @@ app = FastAPI(
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -271,77 +278,12 @@ def predict_batch_compare(req:CompareBatchRequest):
         raise HTTPException(status_code=422,detail='Chọn từ 1 đến 200 mẫu.')
     return _compare_matrix(np.vstack([build_vector(x) for x in req.samples]),req.kernels)
 
-# Xác minh OAuth access token ở phía máy chủ, không tin email do trình duyệt gửi lên.
-import os
-from urllib.request import Request as UrlRequest, urlopen
-from fastapi import Header
-
 @app.get('/admin/overview')
-def admin_overview(authorization:str=Header(default='')):
-    user = _identity(authorization)
-    _require_admin(user)
+def admin_overview(user=Depends(identity)):
+    require_admin(user)
     return {'admin_email':user['email'],'model_version':metadata['model_version'],
         'model_count':4,'benchmark':_benchmark_results(),
         'note':'Số người dùng và lịch sử toàn hệ thống cần bảng Supabase và API thống kê riêng có RLS; không sử dụng số liệu giả.'}
-
-
-# DA2 cloud history: OAuth bearer validated server-side; Supabase service key only on server.
-from urllib.error import HTTPError, URLError
-from urllib.parse import quote
-from fastapi import Body
-from pydantic import Field
-
-def _identity(authorization):
-    if not authorization.startswith('Bearer '):
-        raise HTTPException(status_code=401, detail='Cần đăng nhập Identity Center.')
-    url=os.environ.get('SUPABASE_URL','').rstrip('/')
-    if not url: raise HTTPException(status_code=503,detail='Thiếu SUPABASE_URL trên backend.')
-    try:
-        req=UrlRequest(url+'/auth/v1/oauth/userinfo',headers={'Authorization':authorization})
-        with urlopen(req,timeout=8) as response: user=json.load(response)
-        if not user.get('sub'):
-            raise ValueError('Invalid identity')
-        return user
-    except Exception:
-        raise HTTPException(status_code=401,detail='Phiên đăng nhập không hợp lệ.')
-
-def _is_admin(user):
-    admin_id = os.environ.get('DA2_ADMIN_USER_ID', '').strip().lower()
-    return bool(admin_id) and user.get('sub') == admin_id
-
-
-def _require_admin(user):
-    if not _is_admin(user):
-        raise HTTPException(status_code=403, detail='Tài khoản không có quyền quản trị.')
-
-
-@app.get('/account/profile')
-def account_profile(authorization: str = Header(default='')):
-    user = _identity(authorization)
-    user_id = quote(user['sub'], safe='')
-    profiles = _db('GET', f'profiles?select=full_name&id=eq.{user_id}&limit=1')
-    profile = profiles[0] if profiles else {}
-    return {
-        'sub': user['sub'],
-        'email': user.get('email', ''),
-        'full_name': profile.get('full_name') or user.get('name'),
-        'is_admin': _is_admin(user),
-    }
-
-
-def _db(method,path,payload=None):
-    url=os.environ.get('SUPABASE_URL','').rstrip('/')
-    key=os.environ.get('SUPABASE_SERVICE_ROLE_KEY','')
-    if not url or not key: raise HTTPException(status_code=503,detail='Backend chưa cấu hình SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY.')
-    headers={'apikey':key,'Authorization':'Bearer '+key,'Content-Type':'application/json','Prefer':'return=representation'}
-    data=None if payload is None else json.dumps(payload).encode()
-    try:
-        req=UrlRequest(url+'/rest/v1/'+path,data=data,headers=headers,method=method)
-        with urlopen(req,timeout=12) as response:return json.load(response)
-    except HTTPError as e:
-        raise HTTPException(status_code=502,detail='Supabase database error '+str(e.code))
-    except (URLError,TimeoutError):
-        raise HTTPException(status_code=502,detail='Không kết nối được Supabase.')
 
 
 class HistorySession(BaseModel):
@@ -355,12 +297,11 @@ class HistorySession(BaseModel):
     results: list[dict] | dict = Field(default_factory=list)
 
 
-@app.post('/history/sessions')
+@app.post('/history/sessions', dependencies=[Depends(require_same_origin)])
 def create_session(
     session: HistorySession,
-    authorization: str = Header(default='')
+    user=Depends(identity),
 ):
-    user = _identity(authorization)
 
     if session.type not in ('single', 'batch'):
         raise HTTPException(
@@ -397,38 +338,36 @@ def create_session(
                 detail='Số mẫu/kernel không khớp.'
             )
 
-    record = {
-        'id': session.id,
-        'user_id': user['sub'],
-        'user_email': user.get('email'),
-        'kind': session.type,
-        'filename': session.filename,
-        'sample_count': session.sampleCount,
-        'kernels': session.kernels,
-        'summary': session.summary,
-        'details': {
-            'results': session.results,
-            'analyzedAt': session.analyzedAt
-        }
-    }
-
-    _db('POST', 'bc_analysis_sessions', record)
+    try:
+        with database() as db:
+            db.execute('''
+                insert into public.bc_analysis_sessions
+                    (id, user_id, user_email, kind, filename, sample_count, kernels, summary, details)
+                values (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+            ''', (session.id, user['sub'], user['email'], session.type, session.filename,
+                  session.sampleCount, session.kernels, Jsonb(session.summary),
+                  Jsonb({'results': session.results, 'analyzedAt': session.analyzedAt})))
+    except UniqueViolation as exc:
+        raise HTTPException(409, 'ID phiên phân tích đã tồn tại.') from exc
 
     return {'saved': True, 'id': session.id}
 
 @app.get('/history/sessions')
-def list_sessions(authorization:str=Header(default='')):
-    user=_identity(authorization)
-    path='bc_analysis_sessions?select=id,kind,created_at,filename,sample_count,kernels,summary,details&user_id=eq.'+quote(user['sub'],safe='')+'&order=created_at.desc&limit=200'
-    return {'sessions':_db('GET',path)}
+def list_sessions(user=Depends(identity)):
+    with database() as db:
+        sessions = db.execute('''
+            select id, kind, created_at, filename, sample_count, kernels, summary, details
+            from public.bc_analysis_sessions where user_id = %s
+            order by created_at desc limit 200
+        ''', (user['sub'],)).fetchall()
+    return {'sessions': sessions}
 
 
-@app.delete('/history/sessions/{session_id}')
+@app.delete('/history/sessions/{session_id}', dependencies=[Depends(require_same_origin)])
 def delete_session(
     session_id: str,
-    authorization: str = Header(default='')
+    user=Depends(identity),
 ):
-    user = _identity(authorization)
 
     if not session_id or len(session_id) > 100:
         raise HTTPException(
@@ -436,13 +375,9 @@ def delete_session(
             detail='ID phiên phân tích không hợp lệ.'
         )
 
-    path = (
-        'bc_analysis_sessions'
-        '?id=eq.' + quote(session_id, safe='')
-        + '&user_id=eq.' + quote(user['sub'], safe='')
-    )
-
-    _db('DELETE', path)
+    with database() as db:
+        db.execute('delete from public.bc_analysis_sessions where id = %s and user_id = %s',
+                   (session_id, user['sub']))
 
     return {
         'deleted': True,
@@ -450,12 +385,26 @@ def delete_session(
     }
 
 @app.get('/admin/statistics')
-def admin_statistics(authorization:str=Header(default='')):
-    user=_identity(authorization)
-    _require_admin(user)
-    sessions=_db('GET','bc_analysis_sessions?select=user_id,sample_count,kernels,summary&limit=10000')
+def admin_statistics(user=Depends(identity)):
+    require_admin(user)
+    with database() as db:
+        sessions = db.execute('''
+            select user_id, sample_count, kernels from public.bc_analysis_sessions
+            order by created_at desc limit 10000
+        ''').fetchall()
     counts={k:0 for k in ['Linear','RBF','Polynomial','Sigmoid']}
     for sess in sessions:
         for k in sess.get('kernels',[]):
             if k in counts:counts[k]+=1
     return {'total_users_with_sessions':len(set(s['user_id'] for s in sessions)),'total_sessions':len(sessions),'total_samples':sum(s['sample_count'] for s in sessions),'kernel_usage':counts,'note':'Thống kê phiên đã lưu trong bc_analysis_sessions; không phải tổng người dùng đăng ký.'}
+
+
+@app.exception_handler(RequestValidationError)
+async def handle_request_validation(request: Request, exc: RequestValidationError):
+    if request.url.path.startswith('/account/'):
+        return JSONResponse({'detail': 'Thông tin nhập không hợp lệ.'}, status_code=422)
+    return await request_validation_exception_handler(request, exc)
+
+
+app.include_router(account_router)
+app.mount('/', StaticFiles(directory=Path(__file__).resolve().parents[2] / 'frontend', html=True), name='frontend')

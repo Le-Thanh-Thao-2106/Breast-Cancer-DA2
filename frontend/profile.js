@@ -1,10 +1,6 @@
 document.addEventListener('DOMContentLoaded',()=>{
- document.getElementById('profileLogout').addEventListener('click',logoutSSO);
- document.getElementById('switchAccount')?.addEventListener('click',()=>{
-  sessionStorage.removeItem('bc_access_token');sessionStorage.removeItem('bc_user');
-  sessionStorage.removeItem('bc_code_verifier');sessionStorage.removeItem('bc_oauth_state');
-  window.location.assign('https://identity-center.onrender.com/switch-account.html');
- });
+ document.getElementById('profileLogout').addEventListener('click',logoutBreastCare);
+ document.getElementById('switchAccount')?.addEventListener('click',logoutBreastCare);
 });
 
 // Ảnh đại diện: lưu riêng theo ID tài khoản trong localStorage của trình duyệt.

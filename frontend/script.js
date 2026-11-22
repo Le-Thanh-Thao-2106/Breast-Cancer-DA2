@@ -1,4 +1,4 @@
-const API_URL = "https://breast-cancer-da2-api.onrender.com";
+const API_URL = location.origin;
 
 const featureNames = [
     "mean radius",

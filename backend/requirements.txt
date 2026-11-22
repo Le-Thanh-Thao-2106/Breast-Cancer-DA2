@@ -7,3 +7,5 @@ pydantic
 pandas
 httpx
 pytest
+argon2-cffi
+psycopg[binary]

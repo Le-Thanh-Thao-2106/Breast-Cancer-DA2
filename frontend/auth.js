@@ -1,236 +1,113 @@
+const oldBreastCareHost = "breast-cancer-da2.onrender.com";
+const breastCareOrigin = "https://breast-cancer-da2-api.onrender.com";
 
-const AUTH_URL =
-    `${SSO_CONFIG.supabaseUrl}/auth/v1/oauth/authorize`;
-
-const TOKEN_URL =
-    `${SSO_CONFIG.supabaseUrl}/auth/v1/oauth/token`;
-
-const ACCOUNT_PROFILE_URL =
-    "https://breast-cancer-da2-api.onrender.com/account/profile";
-
-function randomString(length) {
-    const bytes = new Uint8Array(length);
-    crypto.getRandomValues(bytes);
-
-    return Array.from(bytes)
-        .map(b => b.toString(16).padStart(2, "0"))
-        .join("");
-}
-
-function base64UrlEncode(buffer) {
-    const bytes = new Uint8Array(buffer);
-    let binary = "";
-
-    bytes.forEach(b => {
-        binary += String.fromCharCode(b);
-    });
-
-    return btoa(binary)
-        .replace(/\+/g, "-")
-        .replace(/\//g, "_")
-        .replace(/=+$/, "");
-}
-
-async function createCodeChallenge(verifier) {
-    const data = new TextEncoder().encode(verifier);
-    const hash = await crypto.subtle.digest("SHA-256", data);
-    return base64UrlEncode(hash);
-}
-
-async function loginWithSSO() {
-    const verifier = randomString(32);
-    const state = randomString(16);
-    const challenge = await createCodeChallenge(verifier);
-
-    sessionStorage.setItem("bc_code_verifier", verifier);
-    sessionStorage.setItem("bc_oauth_state", state);
-
-    const params = new URLSearchParams({
-        client_id: SSO_CONFIG.clientId,
-        redirect_uri: SSO_CONFIG.redirectUri,
-        response_type: "code",
-        scope: SSO_CONFIG.scope,
-        state: state,
-        code_challenge: challenge,
-        code_challenge_method: "S256"
-    });
-
-    window.location.assign(`${AUTH_URL}?${params.toString()}`);
-}
-
-async function getUser(accessToken) {
-    const response = await fetch(ACCOUNT_PROFILE_URL, {
-        headers: {
-            Authorization: `Bearer ${accessToken}`
-        }
-    });
-
-    const user = await response.json();
-
-    if (!response.ok) {
-        throw new Error("Không thể xác minh tài khoản.");
-    }
-
-    return user;
-}
-
-async function handleSSOCallback() {
-    const params = new URLSearchParams(window.location.search);
-    const code = params.get("code");
-    const error = params.get("error");
-
-    if (error) {
-        throw new Error(
-            params.get("error_description") || error
-        );
-    }
-
-    if (!code) return;
-
-    const state = sessionStorage.getItem("bc_oauth_state");
-    const verifier = sessionStorage.getItem("bc_code_verifier");
-
-    if (!state || !verifier || params.get("state") !== state) {
-        throw new Error("Trạng thái xác thực không hợp lệ.");
-    }
-
-    // Tránh để authorization code tồn tại trên thanh địa chỉ.
-    window.history.replaceState(
-        {},
-        document.title,
-        SSO_CONFIG.redirectUri
-    );
-
-    const response = await fetch(TOKEN_URL, {
+async function accountRequest(path, body) {
+    const options = body === undefined ? {} : {
         method: "POST",
-        headers: {
-            "Content-Type": "application/x-www-form-urlencoded"
-        },
-        body: new URLSearchParams({
-            grant_type: "authorization_code",
-            code: code,
-            client_id: SSO_CONFIG.clientId,
-            redirect_uri: SSO_CONFIG.redirectUri,
-            code_verifier: verifier
-        })
-    });
-
-    const tokens = await response.json();
-
-    if (!response.ok || !tokens.access_token) {
-        throw new Error(
-            tokens.error_description ||
-            tokens.error ||
-            "Không thể lấy access token."
-        );
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body)
+    };
+    const response = await fetch(`/account/${path}`, options);
+    if (response.status === 204) return null;
+    const data = await response.json();
+    if (!response.ok) {
+        const error = new Error(data.detail || "Yêu cầu thất bại.");
+        error.status = response.status;
+        throw error;
     }
-
-    const user = await getUser(tokens.access_token);
-
-    sessionStorage.setItem(
-        "bc_access_token",
-        tokens.access_token
-    );
-
-    sessionStorage.setItem(
-        "bc_user",
-        JSON.stringify(user)
-    );
-
-    sessionStorage.removeItem("bc_code_verifier");
-    sessionStorage.removeItem("bc_oauth_state");
-    window.location.replace("profile.html");
-    return true;
+    return data;
 }
 
-function logoutSSO() {
-    sessionStorage.removeItem("bc_access_token");
-    sessionStorage.removeItem("bc_user");
-    sessionStorage.removeItem("bc_code_verifier");
-    sessionStorage.removeItem("bc_oauth_state");
-
-    // Đăng xuất cả Identity Center để lần sau có thể chọn tài khoản khác.
-    window.location.replace("https://identity-center.onrender.com/switch-account.html?from=breastcare");
+async function logoutBreastCare() {
+    try {
+        await accountRequest("logout", {});
+        sessionStorage.removeItem("bc_user");
+        location.replace("login.html");
+    } catch (error) {
+        const message = document.getElementById("ssoMessage");
+        if (message) message.textContent = error.message;
+    }
 }
 
-function displaySSOUser(user) {
-    const name =
-        user.full_name ||
-        user.user_metadata?.full_name ||
-        user.name ||
-        user.email ||
-        "Người dùng";
-
-    const email = user.email || "";
-
-    const nameElement = document.getElementById("ssoUserName");
-    const emailElement = document.getElementById("ssoUserEmail");
-
-    if (nameElement) nameElement.textContent = name;
-    if (emailElement) emailElement.textContent = email;
-
+function showBreastCareAccount(user) {
+    sessionStorage.setItem("bc_user", JSON.stringify(user));
+    const name = document.getElementById("ssoUserName");
+    const email = document.getElementById("ssoUserEmail");
     const adminLink = document.getElementById("adminNavLink");
+    if (name) name.textContent = user.full_name || user.email;
+    if (email) email.textContent = user.email;
     if (adminLink) adminLink.hidden = user.is_admin !== true;
+    document.dispatchEvent(new CustomEvent("bc:account-ready", { detail: user }));
 }
 
-async function initSSOPage() {
-    const loginButton = document.getElementById("ssoLoginBtn");
-
-    if (loginButton) {
-        loginButton.addEventListener("click", loginWithSSO);
-
-        // Nếu đã đăng nhập, mở hồ sơ. Identity Center có thể yêu cầu bắt đầu SSO.
-        const token = sessionStorage.getItem("bc_access_token");
-
-        if (token) {
-            try {
-                await getUser(token);
-                window.location.replace("profile.html");
-                return;
-            } catch {
-                sessionStorage.removeItem("bc_access_token");
-                sessionStorage.removeItem("bc_user");
-            }
+function bindAccountForm(form, message, submit) {
+    if (!form) return;
+    form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const button = form.querySelector("button[type=submit]");
+        button.disabled = true;
+        message.textContent = "Đang xử lý…";
+        try {
+            await submit();
+        } catch (error) {
+            message.textContent = error.message;
+        } finally {
+            button.disabled = false;
         }
-        if (new URLSearchParams(location.search).get("start") === "1") {
-            await loginWithSSO();
-        }
+    });
+}
+
+async function initBreastCare() {
+    if (location.hostname === oldBreastCareHost) {
+        const path = location.pathname === "/" ? "/index.html" : location.pathname;
+        const target = new URL(breastCareOrigin);
+        target.pathname = path;
+        location.replace(target.href);
         return;
     }
 
+    const loginForm = document.getElementById("loginForm");
+    const registerForm = document.getElementById("registerForm");
+    const passwordForm = document.getElementById("passwordForm");
     const message = document.getElementById("ssoMessage");
+    const value = (id) => document.getElementById(id).value;
 
+    bindAccountForm(loginForm, message, async () => {
+        await accountRequest("login", { email: value("loginEmail"), password: value("loginPassword") });
+        location.replace("profile.html");
+    });
+    bindAccountForm(registerForm, document.getElementById("registerMessage"), async () => {
+        const password = value("registerPassword");
+        if (password !== value("confirmPassword")) throw new Error("Mật khẩu xác nhận không khớp.");
+        await accountRequest("register", {
+            email: value("registerEmail"), password, full_name: value("fullName")
+        });
+        location.replace("profile.html");
+    });
+    bindAccountForm(passwordForm, document.getElementById("passwordMessage"), async () => {
+        await accountRequest("password", {
+            current_password: value("currentPassword"), password: value("newPassword")
+        });
+        passwordForm.reset();
+        document.getElementById("passwordMessage").textContent = "Đã đổi mật khẩu.";
+    });
+
+    document.getElementById("ssoLogoutBtn")?.addEventListener("click", logoutBreastCare);
     try {
-        if (await handleSSOCallback()) return;
-
-        const token = sessionStorage.getItem("bc_access_token");
-
-        if (!token) {
-            window.location.replace("login.html");
+        const user = await accountRequest("profile");
+        if (loginForm || registerForm) {
+            location.replace("profile.html");
             return;
         }
-
-        const user = await getUser(token);
-        sessionStorage.setItem("bc_user", JSON.stringify(user));
-        displaySSOUser(user);
-        document.dispatchEvent(new CustomEvent("bc:account-ready", { detail: user }));
-
-        const logoutButton = document.getElementById("ssoLogoutBtn");
-
-        if (logoutButton) {
-            logoutButton.addEventListener("click", logoutSSO);
-        }
+        showBreastCareAccount(user);
     } catch (error) {
-        sessionStorage.removeItem("bc_access_token");
         sessionStorage.removeItem("bc_user");
-
-        if (message) {
-            message.textContent = "Lỗi SSO: " + error.message;
-        } else {
-            alert("Lỗi SSO: " + error.message);
-            window.location.replace("login.html");
+        if (error.status === 401) {
+            if (!loginForm && !registerForm) location.replace("login.html");
+        } else if (message) {
+            message.textContent = error.message;
         }
     }
 }
 
-document.addEventListener("DOMContentLoaded", initSSOPage);
+document.addEventListener("DOMContentLoaded", initBreastCare);
