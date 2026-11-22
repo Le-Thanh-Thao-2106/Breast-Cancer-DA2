@@ -5,8 +5,8 @@ const AUTH_URL =
 const TOKEN_URL =
     `${SSO_CONFIG.supabaseUrl}/auth/v1/oauth/token`;
 
-const USERINFO_URL =
-    `${SSO_CONFIG.supabaseUrl}/auth/v1/oauth/userinfo`;
+const ACCOUNT_PROFILE_URL =
+    "https://breast-cancer-da2-api.onrender.com/account/profile";
 
 function randomString(length) {
     const bytes = new Uint8Array(length);
@@ -59,7 +59,7 @@ async function loginWithSSO() {
 }
 
 async function getUser(accessToken) {
-    const response = await fetch(USERINFO_URL, {
+    const response = await fetch(ACCOUNT_PROFILE_URL, {
         headers: {
             Authorization: `Bearer ${accessToken}`
         }
@@ -139,7 +139,8 @@ async function handleSSOCallback() {
 
     sessionStorage.removeItem("bc_code_verifier");
     sessionStorage.removeItem("bc_oauth_state");
-    window.location.replace("index.html");
+    window.location.replace("profile.html");
+    return true;
 }
 
 function logoutSSO() {
@@ -167,6 +168,9 @@ function displaySSOUser(user) {
 
     if (nameElement) nameElement.textContent = name;
     if (emailElement) emailElement.textContent = email;
+
+    const adminLink = document.getElementById("adminNavLink");
+    if (adminLink) adminLink.hidden = user.is_admin !== true;
 }
 
 async function initSSOPage() {
@@ -175,16 +179,21 @@ async function initSSOPage() {
     if (loginButton) {
         loginButton.addEventListener("click", loginWithSSO);
 
-        // Nếu đã đăng nhập, đi thẳng đến trang chủ.
+        // Nếu đã đăng nhập, mở hồ sơ. Identity Center có thể yêu cầu bắt đầu SSO.
         const token = sessionStorage.getItem("bc_access_token");
 
         if (token) {
             try {
                 await getUser(token);
-                window.location.replace("index.html");
+                window.location.replace("profile.html");
+                return;
             } catch {
-                logoutSSO();
+                sessionStorage.removeItem("bc_access_token");
+                sessionStorage.removeItem("bc_user");
             }
+        }
+        if (new URLSearchParams(location.search).get("start") === "1") {
+            await loginWithSSO();
         }
         return;
     }
@@ -192,7 +201,7 @@ async function initSSOPage() {
     const message = document.getElementById("ssoMessage");
 
     try {
-        await handleSSOCallback();
+        if (await handleSSOCallback()) return;
 
         const token = sessionStorage.getItem("bc_access_token");
 
@@ -204,6 +213,7 @@ async function initSSOPage() {
         const user = await getUser(token);
         sessionStorage.setItem("bc_user", JSON.stringify(user));
         displaySSOUser(user);
+        document.dispatchEvent(new CustomEvent("bc:account-ready", { detail: user }));
 
         const logoutButton = document.getElementById("ssoLogoutBtn");
 

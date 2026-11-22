@@ -278,17 +278,8 @@ from fastapi import Header
 
 @app.get('/admin/overview')
 def admin_overview(authorization:str=Header(default='')):
-    if not authorization.startswith('Bearer '):
-        raise HTTPException(status_code=401,detail='Cần đăng nhập.')
-    supabase_url=os.getenv('SUPABASE_URL','https://lddiorszgghrrpbfsyff.supabase.co').rstrip('/')
-    try:
-        request=UrlRequest(supabase_url+'/auth/v1/oauth/userinfo',headers={'Authorization':authorization})
-        with urlopen(request,timeout=8) as response:
-            user=json.load(response)
-    except Exception:
-        raise HTTPException(status_code=401,detail='Phiên OAuth không hợp lệ hoặc đã hết hạn.')
-    if str(user.get('email','')).lower()!='lethao8130@gmail.com' or not user.get('email_verified',False):
-        raise HTTPException(status_code=403,detail='Tài khoản không có quyền quản trị.')
+    user = _identity(authorization)
+    _require_admin(user)
     return {'admin_email':user['email'],'model_version':metadata['model_version'],
         'model_count':4,'benchmark':_benchmark_results(),
         'note':'Số người dùng và lịch sử toàn hệ thống cần bảng Supabase và API thống kê riêng có RLS; không sử dụng số liệu giả.'}
@@ -308,10 +299,35 @@ def _identity(authorization):
     try:
         req=UrlRequest(url+'/auth/v1/oauth/userinfo',headers={'Authorization':authorization})
         with urlopen(req,timeout=8) as response: user=json.load(response)
-        if not user.get('sub') or not user.get('email_verified',False): raise ValueError('Invalid identity')
+        if not user.get('sub'):
+            raise ValueError('Invalid identity')
         return user
     except Exception:
         raise HTTPException(status_code=401,detail='Phiên đăng nhập không hợp lệ.')
+
+def _is_admin(user):
+    admin_id = os.environ.get('DA2_ADMIN_USER_ID', '').strip().lower()
+    return bool(admin_id) and user.get('sub') == admin_id
+
+
+def _require_admin(user):
+    if not _is_admin(user):
+        raise HTTPException(status_code=403, detail='Tài khoản không có quyền quản trị.')
+
+
+@app.get('/account/profile')
+def account_profile(authorization: str = Header(default='')):
+    user = _identity(authorization)
+    user_id = quote(user['sub'], safe='')
+    profiles = _db('GET', f'profiles?select=full_name&id=eq.{user_id}&limit=1')
+    profile = profiles[0] if profiles else {}
+    return {
+        'sub': user['sub'],
+        'email': user.get('email', ''),
+        'full_name': profile.get('full_name') or user.get('name'),
+        'is_admin': _is_admin(user),
+    }
+
 
 def _db(method,path,payload=None):
     url=os.environ.get('SUPABASE_URL','').rstrip('/')
@@ -436,7 +452,7 @@ def delete_session(
 @app.get('/admin/statistics')
 def admin_statistics(authorization:str=Header(default='')):
     user=_identity(authorization)
-    if user.get('email','').lower()!='lethao8130@gmail.com':raise HTTPException(status_code=403,detail='Không có quyền admin.')
+    _require_admin(user)
     sessions=_db('GET','bc_analysis_sessions?select=user_id,sample_count,kernels,summary&limit=10000')
     counts={k:0 for k in ['Linear','RBF','Polynomial','Sigmoid']}
     for sess in sessions:
