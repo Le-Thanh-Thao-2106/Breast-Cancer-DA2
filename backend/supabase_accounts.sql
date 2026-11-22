@@ -19,6 +19,17 @@ create table if not exists breastcare_private.sessions (
 create index if not exists breastcare_sessions_account_idx
     on breastcare_private.sessions (account_id);
 
+create table if not exists breastcare_private.sign_in_codes (
+    token_hash bytea primary key,
+    account_id uuid not null references breastcare_private.accounts(id) on delete cascade,
+    code_challenge bytea not null,
+    expires_at timestamptz not null
+);
+create index if not exists breastcare_sign_in_codes_expiry_idx
+    on breastcare_private.sign_in_codes (expires_at);
+create index if not exists breastcare_sign_in_codes_account_idx
+    on breastcare_private.sign_in_codes (account_id);
+
 create table if not exists breastcare_private.auth_limits (
     scope text not null,
     bucket bytea not null,

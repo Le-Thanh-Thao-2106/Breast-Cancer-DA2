@@ -1,6 +1,7 @@
 import logging
 import os
 import re
+from base64 import urlsafe_b64encode
 from contextlib import contextmanager
 from hashlib import sha256
 from secrets import token_urlsafe
@@ -26,11 +27,14 @@ cookie_name = 'bc_session'
 session_seconds = 7 * 24 * 60 * 60
 local_hosts = {'localhost', '127.0.0.1', '::1'}
 web_origin = 'https://breast-cancer-da2.onrender.com'
+identity_origin = 'https://identity-center.onrender.com'
+token_pattern = r'^[A-Za-z0-9_-]{43}$'
 
 
 class Credentials(BaseModel):
     email: str = Field(max_length=254)
     password: str = Field(min_length=1, max_length=128, repr=False)
+    code_challenge: str | None = Field(default=None, pattern=token_pattern)
 
     @field_validator('email')
     @classmethod
@@ -57,6 +61,11 @@ class Registration(Credentials):
 class PasswordChange(BaseModel):
     current_password: str = Field(min_length=1, max_length=128, repr=False)
     password: str = Field(min_length=8, max_length=128, repr=False)
+
+
+class SignInCode(BaseModel):
+    code: str = Field(pattern=token_pattern, repr=False)
+    verifier: str = Field(pattern=token_pattern, repr=False)
 
 
 @contextmanager
@@ -88,8 +97,24 @@ def require_browser_origin(request: Request):
 
 def require_json(request: Request):
     require_browser_origin(request)
+    validate_json(request)
+
+
+def validate_json(request):
     if request.headers.get('content-type', '').split(';', 1)[0].lower() != 'application/json':
         raise HTTPException(415, 'Yêu cầu phải dùng JSON.')
+
+
+def credential_challenge(request, body):
+    if request.headers.get('origin') == identity_origin:
+        validate_json(request)
+        if not body.code_challenge:
+            raise HTTPException(422, 'Phiên đăng nhập chưa được khởi tạo từ BreastCare.')
+        return body.code_challenge
+    require_json(request)
+    if body.code_challenge:
+        raise HTTPException(403, 'Trang gửi yêu cầu không hợp lệ.')
+    return None
 
 
 def digest(value):
@@ -158,6 +183,18 @@ def open_session(db, account_id):
     return token
 
 
+def finish_credentials(db, account_id, challenge):
+    if challenge is None:
+        return open_session(db, account_id)
+    code = token_urlsafe(32)
+    db.execute('delete from breastcare_private.sign_in_codes where expires_at <= now()')
+    db.execute('''
+        insert into breastcare_private.sign_in_codes (token_hash, account_id, code_challenge, expires_at)
+        values (%s, %s, %s, now() + interval '90 seconds')
+    ''', (digest(code), account_id, challenge.encode('ascii')))
+    return code
+
+
 def session_response(response, request, token, result):
     response.headers['Cache-Control'] = 'no-store'
     if request.headers.get('origin') == web_origin:
@@ -165,6 +202,13 @@ def session_response(response, request, token, result):
     response.set_cookie(cookie_name, token, max_age=session_seconds, httponly=True,
                         secure=request.url.hostname not in local_hosts, samesite='strict')
     return result
+
+
+def credentials_response(response, request, credential, challenge, result):
+    if challenge is not None:
+        response.headers['Cache-Control'] = 'no-store'
+        return {**result, 'authorization_code': credential}
+    return session_response(response, request, credential, result)
 
 
 def verify_password(password_hash, password):
@@ -180,8 +224,9 @@ def hash_password(password):
         return hasher.hash(password)
 
 
-@router.post('/register', status_code=201, dependencies=[Depends(require_json)])
+@router.post('/register', status_code=201)
 def register(body: Registration, request: Request, response: Response):
+    challenge = credential_challenge(request, body)
     count_attempt('register_ip', request.client.host if request.client else 'unknown', 20)
     account_id = uuid4()
     password_hash = hash_password(body.password)
@@ -191,14 +236,15 @@ def register(body: Registration, request: Request, response: Response):
                 insert into breastcare_private.accounts (id, email, full_name, password_hash)
                 values (%s, %s, %s, %s)
             ''', (account_id, body.email, body.full_name, password_hash))
-            token = open_session(db, account_id)
+            token = finish_credentials(db, account_id, challenge)
     except errors.UniqueViolation as exc:
         raise HTTPException(409, 'Email này đã được đăng ký. Vui lòng đăng nhập.') from exc
-    return session_response(response, request, token, {'registered': True})
+    return credentials_response(response, request, token, challenge, {'registered': True})
 
 
-@router.post('/login', dependencies=[Depends(require_json)])
+@router.post('/login')
 def login(body: Credentials, request: Request, response: Response):
+    challenge = credential_challenge(request, body)
     ip = request.client.host if request.client else 'unknown'
     count_attempt('login_ip', ip, 100)
     count_attempt('login_account_ip', f'{ip}|{body.email}', 10)
@@ -211,6 +257,30 @@ def login(body: Credentials, request: Request, response: Response):
             raise HTTPException(401, 'Email hoặc mật khẩu không đúng.')
         db.execute("delete from breastcare_private.auth_limits where scope = 'login_account_ip' and bucket = %s",
                    (digest(f'{ip}|{body.email}'),))
+        token = finish_credentials(db, account['id'], challenge)
+    return credentials_response(response, request, token, challenge, {'signed_in': True})
+
+
+@router.post('/exchange', dependencies=[Depends(require_json)])
+def exchange_sign_in_code(body: SignInCode, request: Request, response: Response):
+    if request.headers.get('origin') != web_origin:
+        raise HTTPException(403, 'Chỉ BreastCare có thể nhận phiên đăng nhập.')
+    code_hash = digest(body.code)
+    challenge = urlsafe_b64encode(digest(body.verifier)).rstrip(b'=')
+    with database() as db:
+        account = db.execute('''
+            select a.id from breastcare_private.accounts a
+            join breastcare_private.sign_in_codes c on c.account_id = a.id
+            where c.token_hash = %s and c.code_challenge = %s and c.expires_at > now()
+            for update of a
+        ''', (code_hash, challenge)).fetchone()
+        used_code = account and db.execute('''
+            delete from breastcare_private.sign_in_codes
+            where token_hash = %s and expires_at > clock_timestamp()
+            returning account_id
+        ''', (code_hash,)).fetchone()
+        if not used_code:
+            raise HTTPException(401, 'Mã đăng nhập không hợp lệ hoặc đã hết hạn. Vui lòng đăng nhập lại.')
         token = open_session(db, account['id'])
     return session_response(response, request, token, {'signed_in': True})
 
@@ -245,5 +315,6 @@ def change_password(body: PasswordChange, request: Request, response: Response, 
         db.execute('update breastcare_private.accounts set password_hash = %s where id = %s',
                    (hash_password(body.password), user['sub']))
         db.execute('delete from breastcare_private.sessions where account_id = %s', (user['sub'],))
+        db.execute('delete from breastcare_private.sign_in_codes where account_id = %s', (user['sub'],))
         token = open_session(db, user['sub'])
     return session_response(response, request, token, {'changed': True})

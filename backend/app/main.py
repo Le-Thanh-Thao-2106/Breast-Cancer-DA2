@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from psycopg.errors import UniqueViolation
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
-from .accounts import database, identity, require_admin, require_browser_origin, router as account_router, web_origin
+from .accounts import database, identity, identity_origin, require_admin, require_browser_origin, router as account_router, web_origin
 
 
 # =========================
@@ -47,7 +47,7 @@ app = FastAPI(
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[web_origin],
+    allow_origins=[web_origin, identity_origin],
     allow_credentials=False,
     allow_methods=["GET", "POST", "DELETE"],
     allow_headers=["Authorization", "Content-Type"],

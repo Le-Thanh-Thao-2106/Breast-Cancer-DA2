@@ -35,6 +35,7 @@ def main():
                     password_hash = excluded.password_hash
             ''', (admin_id, account.email, account.full_name, password_hash))
             db.execute('delete from breastcare_private.sessions where account_id = %s', (admin_id,))
+            db.execute('delete from breastcare_private.sign_in_codes where account_id = %s', (admin_id,))
     except UniqueViolation:
         raise SystemExit('Email admin đã thuộc về một UUID khác trong bảng tài khoản BreastCare.')
 

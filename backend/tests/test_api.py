@@ -1,5 +1,5 @@
 from fastapi.testclient import TestClient
-from app.accounts import web_origin
+from app.accounts import identity_origin, web_origin
 from app.main import app
 
 
@@ -65,6 +65,27 @@ def test_static_breastcare_site_can_call_account_api():
     })
     assert response.status_code == 200
     assert response.headers['access-control-allow-origin'] == web_origin
+
+
+def test_identity_center_can_start_but_cannot_receive_a_session():
+    headers = {'Origin': identity_origin, 'Sec-Fetch-Site': 'cross-site'}
+    preflight = client.options('/account/login', headers={
+        **headers,
+        'Access-Control-Request-Method': 'POST',
+        'Access-Control-Request-Headers': 'content-type',
+    })
+    assert preflight.status_code == 200
+    assert preflight.headers['access-control-allow-origin'] == identity_origin
+
+    login = client.post('/account/login', headers=headers, json={
+        'email': 'test@example.com', 'password': 'test-password',
+    })
+    assert login.status_code == 422
+    assert client.get('/account/profile', headers=headers).status_code == 403
+    exchange = client.post('/account/exchange', headers=headers, json={
+        'code': 'x' * 43, 'verifier': 'y' * 43,
+    })
+    assert exchange.status_code == 403
 
     response = client.get('/account/profile', headers={
         'Origin': web_origin, 'Sec-Fetch-Site': 'cross-site',
