@@ -1,5 +1,6 @@
 from fastapi.testclient import TestClient
-from app.main import app, metadata
+from app.accounts import web_origin
+from app.main import app
 
 
 client = TestClient(app)
@@ -32,9 +33,8 @@ def test_metadata_has_30_features():
     assert len(r.json()["feature_names"]) == 30
 
 
-def test_account_pages_and_cookie_required():
-    assert 'id="loginForm"' in client.get('/login.html').text
-    assert 'id="registerForm"' in client.get('/register.html').text
+def test_account_and_history_require_session():
+    assert client.get('/login.html').status_code == 404
     assert client.get('/account/profile').status_code == 401
     assert client.get('/history/sessions').status_code == 401
     assert client.get('/admin/overview').status_code == 401
@@ -55,3 +55,19 @@ def test_cross_site_login_is_rejected():
         json={'email': 'new@example.com', 'password': 'some-password'},
     )
     assert response.status_code == 403
+
+
+def test_static_breastcare_site_can_call_account_api():
+    response = client.options('/account/profile', headers={
+        'Origin': web_origin,
+        'Access-Control-Request-Method': 'GET',
+        'Access-Control-Request-Headers': 'authorization',
+    })
+    assert response.status_code == 200
+    assert response.headers['access-control-allow-origin'] == web_origin
+
+    response = client.get('/account/profile', headers={
+        'Origin': web_origin, 'Sec-Fetch-Site': 'cross-site',
+    })
+    assert response.status_code == 401
+    assert response.headers['access-control-allow-origin'] == web_origin

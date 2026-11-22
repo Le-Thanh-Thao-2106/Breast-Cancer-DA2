@@ -6,12 +6,11 @@ from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from psycopg.errors import UniqueViolation
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field
-from .accounts import database, identity, require_admin, require_same_origin, router as account_router
+from .accounts import database, identity, require_admin, require_browser_origin, router as account_router, web_origin
 
 
 # =========================
@@ -48,10 +47,10 @@ app = FastAPI(
 )
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[web_origin],
     allow_credentials=False,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "DELETE"],
+    allow_headers=["Authorization", "Content-Type"],
 )
 
 # =========================
@@ -297,7 +296,7 @@ class HistorySession(BaseModel):
     results: list[dict] | dict = Field(default_factory=list)
 
 
-@app.post('/history/sessions', dependencies=[Depends(require_same_origin)])
+@app.post('/history/sessions', dependencies=[Depends(require_browser_origin)])
 def create_session(
     session: HistorySession,
     user=Depends(identity),
@@ -363,7 +362,7 @@ def list_sessions(user=Depends(identity)):
     return {'sessions': sessions}
 
 
-@app.delete('/history/sessions/{session_id}', dependencies=[Depends(require_same_origin)])
+@app.delete('/history/sessions/{session_id}', dependencies=[Depends(require_browser_origin)])
 def delete_session(
     session_id: str,
     user=Depends(identity),
@@ -407,4 +406,3 @@ async def handle_request_validation(request: Request, exc: RequestValidationErro
 
 
 app.include_router(account_router)
-app.mount('/', StaticFiles(directory=Path(__file__).resolve().parents[2] / 'frontend', html=True), name='frontend')

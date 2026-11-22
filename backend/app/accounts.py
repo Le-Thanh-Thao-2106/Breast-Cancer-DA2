@@ -25,6 +25,7 @@ password_workers = BoundedSemaphore(2)
 cookie_name = 'bc_session'
 session_seconds = 7 * 24 * 60 * 60
 local_hosts = {'localhost', '127.0.0.1', '::1'}
+web_origin = 'https://breast-cancer-da2.onrender.com'
 
 
 class Credentials(BaseModel):
@@ -71,10 +72,12 @@ def database():
         raise HTTPException(503, 'Cơ sở dữ liệu tạm thời không khả dụng.') from exc
 
 
-def require_same_origin(request: Request):
+def require_browser_origin(request: Request):
+    origin = request.headers.get('origin')
+    if origin == web_origin:
+        return
     if request.headers.get('sec-fetch-site') in {'cross-site', 'same-site'}:
         raise HTTPException(403, 'Trang gửi yêu cầu không hợp lệ.')
-    origin = request.headers.get('origin')
     if origin:
         scheme = 'http' if request.url.hostname in local_hosts and request.url.scheme == 'http' else 'https'
         expected = urlsplit(f'{scheme}://{request.url.netloc}')
@@ -84,7 +87,7 @@ def require_same_origin(request: Request):
 
 
 def require_json(request: Request):
-    require_same_origin(request)
+    require_browser_origin(request)
     if request.headers.get('content-type', '').split(';', 1)[0].lower() != 'application/json':
         raise HTTPException(415, 'Yêu cầu phải dùng JSON.')
 
@@ -103,13 +106,20 @@ def require_admin(user):
 
 
 def session_token(request):
-    token = request.cookies.get(cookie_name, '')
+    authorization = request.headers.get('authorization')
+    if authorization is None:
+        token = request.cookies.get(cookie_name, '')
+    else:
+        scheme, _, token = authorization.partition(' ')
+        if scheme.lower() != 'bearer':
+            raise HTTPException(401, 'Phiên đăng nhập không hợp lệ.')
     if not re.fullmatch(r'[A-Za-z0-9_-]{43}', token):
         raise HTTPException(401, 'Vui lòng đăng nhập BreastCare.')
     return digest(token)
 
 
 def identity(request: Request):
+    require_browser_origin(request)
     token_hash = session_token(request)
     with database() as db:
         user = db.execute('''
@@ -148,10 +158,13 @@ def open_session(db, account_id):
     return token
 
 
-def set_cookie(response, request, token):
+def session_response(response, request, token, result):
     response.headers['Cache-Control'] = 'no-store'
+    if request.headers.get('origin') == web_origin:
+        return {**result, 'session_token': token}
     response.set_cookie(cookie_name, token, max_age=session_seconds, httponly=True,
                         secure=request.url.hostname not in local_hosts, samesite='strict')
+    return result
 
 
 def verify_password(password_hash, password):
@@ -181,8 +194,7 @@ def register(body: Registration, request: Request, response: Response):
             token = open_session(db, account_id)
     except errors.UniqueViolation as exc:
         raise HTTPException(409, 'Email này đã được đăng ký. Vui lòng đăng nhập.') from exc
-    set_cookie(response, request, token)
-    return {'registered': True}
+    return session_response(response, request, token, {'registered': True})
 
 
 @router.post('/login', dependencies=[Depends(require_json)])
@@ -200,8 +212,7 @@ def login(body: Credentials, request: Request, response: Response):
         db.execute("delete from breastcare_private.auth_limits where scope = 'login_account_ip' and bucket = %s",
                    (digest(f'{ip}|{body.email}'),))
         token = open_session(db, account['id'])
-    set_cookie(response, request, token)
-    return {'signed_in': True}
+    return session_response(response, request, token, {'signed_in': True})
 
 
 @router.get('/profile')
@@ -210,9 +221,9 @@ def profile(response: Response, user=Depends(identity)):
     return {**user, 'is_admin': is_admin(user)}
 
 
-@router.post('/logout', status_code=204, dependencies=[Depends(require_same_origin)])
+@router.post('/logout', status_code=204, dependencies=[Depends(require_browser_origin)])
 def logout(request: Request, response: Response):
-    if cookie_name in request.cookies:
+    if cookie_name in request.cookies or 'authorization' in request.headers:
         try:
             token_hash = session_token(request)
         except HTTPException:
@@ -235,5 +246,4 @@ def change_password(body: PasswordChange, request: Request, response: Response, 
                    (hash_password(body.password), user['sub']))
         db.execute('delete from breastcare_private.sessions where account_id = %s', (user['sub'],))
         token = open_session(db, user['sub'])
-    set_cookie(response, request, token)
-    return {'changed': True}
+    return session_response(response, request, token, {'changed': True})

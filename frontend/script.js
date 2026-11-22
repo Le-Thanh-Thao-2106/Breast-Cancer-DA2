@@ -1,4 +1,4 @@
-const API_URL = location.origin;
+const API_URL = BREASTCARE_API;
 
 const featureNames = [
     "mean radius",

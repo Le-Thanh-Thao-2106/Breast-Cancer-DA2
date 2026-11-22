@@ -2,7 +2,7 @@ const BC_HISTORY_API = "/history/sessions";
 
 window.bcSaveCloudSession = async function (session) {
 
-    const res = await fetch(BC_HISTORY_API, {
+    const res = await fetchBreastCare(BC_HISTORY_API, {
         method: "POST",
         headers: {
             "Content-Type": "application/json"
@@ -47,7 +47,7 @@ window.bcSaveCloudSession = async function (session) {
 
 window.bcLoadCloudSessions = async function () {
 
-    const res = await fetch(BC_HISTORY_API);
+    const res = await fetchBreastCare(BC_HISTORY_API);
 
     if (!res.ok) {
         throw new Error(
@@ -76,7 +76,7 @@ window.bcDeleteCloudSession = async function (sessionId) {
     const url =
         BC_HISTORY_API + "/" + encodeURIComponent(sessionId);
 
-    const res = await fetch(url, {
+    const res = await fetchBreastCare(url, {
         method: "DELETE"
     });
 
