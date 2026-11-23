@@ -83,40 +83,45 @@ const BatchResults = (() => {
         const output = element("div");
         const body = element("div", undefined, labels ? "research-labeled-results" : undefined);
         const errors = element("div", undefined, "research-label-errors");
-        const filterButtons = [];
-
-        if (labels) {
-            const filters = element("div", undefined, "research-result-filters");
-            filters.setAttribute("role", "group");
-            filters.setAttribute("aria-label", "Lọc theo kết quả so với nhãn thật");
-            for (const [mode, title] of [["all", "Tất cả"], ["correct", "Đúng"], ["incorrect", "Sai"]]) {
-                const button = element("button", title);
-                button.type = "button";
-                button.onclick = () => {
-                    filter = mode;
-                    page = 0;
-                    filterButtons.forEach(({ button, mode }) => button.setAttribute("aria-pressed", String(mode === filter)));
-                    renderPage();
-                };
-                filterButtons.push({ button, mode, title });
-                filters.append(button);
-            }
-            bar.append(filters);
-            body.append(errors);
-        }
+        const modes = labels
+            ? [["all", "Tất cả"], ["correct", "Đúng"], ["incorrect", "Sai"]]
+            : [["all", "Tất cả"], ["malignant", "Ác tính"], ["benign", "Lành tính"]];
+        const filters = element("div", undefined, "research-result-filters");
+        filters.setAttribute("role", "group");
+        filters.setAttribute("aria-label", labels ? "Lọc theo kết quả so với nhãn thật" : "Lọc theo nhãn dự đoán");
+        const filterButtons = modes.map(([mode, title]) => {
+            const button = element("button", title);
+            button.type = "button";
+            button.onclick = () => {
+                filter = mode;
+                page = 0;
+                filterButtons.forEach(({ button, mode }) => button.setAttribute("aria-pressed", String(mode === filter)));
+                renderPage();
+            };
+            filters.append(button);
+            return { button, mode, title };
+        });
+        bar.append(filters);
+        if (labels) body.append(errors);
         body.append(output);
 
         function updateKernel() {
-            groups = { all: [], correct: [], incorrect: [] };
+            groups = Object.fromEntries(modes.map(([mode]) => [mode, []]));
             run.predictions.forEach((row, index) => {
                 groups.all.push(index);
-                if (labels) groups[row.predicted_class === labels[index] ? "correct" : "incorrect"].push(index);
+                if (labels) {
+                    groups[row.predicted_class === labels[index] ? "correct" : "incorrect"].push(index);
+                } else if (row.predicted_class === 0) {
+                    groups.malignant.push(index);
+                } else if (row.predicted_class === 1) {
+                    groups.benign.push(index);
+                }
             });
-            if (!labels) return;
             filterButtons.forEach(({ button, mode, title }) => {
                 button.textContent = `${title} · ${groups[mode].length}`;
                 button.setAttribute("aria-pressed", String(mode === filter));
             });
+            if (!labels) return;
             const { incorrectByLabel } = summarize(run, labels).evaluation;
             errors.replaceChildren(...["Ác tính → Lành tính", "Lành tính → Ác tính"].map((description, index) => {
                 const card = element("div", undefined, "research-label-error-card");
@@ -131,7 +136,12 @@ const BatchResults = (() => {
             const indexes = groups[filter];
             const total = indexes.length;
             if (!total) {
-                const empty = element("p", filter === "incorrect" ? "Kernel này không có mẫu dự đoán sai." : "Không có mẫu phù hợp.");
+                const emptyMessage = {
+                    incorrect: "Kernel này không có mẫu dự đoán sai.",
+                    malignant: "Kernel này không dự đoán mẫu nào là ác tính.",
+                    benign: "Kernel này không dự đoán mẫu nào là lành tính."
+                }[filter];
+                const empty = element("p", emptyMessage || "Không có mẫu phù hợp.");
                 empty.setAttribute("role", "status");
                 output.replaceChildren(empty);
                 return;
@@ -166,7 +176,7 @@ const BatchResults = (() => {
             next.disabled = first + pageSize >= total;
             back.onclick = () => { page--; renderPage(); };
             next.onclick = () => { page++; renderPage(); };
-            const pageMessage = element("span", total ? `${first + 1}–${Math.min(first + pageSize, total)} / ${total} mẫu` : "0 mẫu");
+            const pageMessage = element("span", `${first + 1}–${Math.min(first + pageSize, total)} / ${total} mẫu`);
             pageMessage.setAttribute("aria-live", "polite");
             pager.append(pageMessage, back, next);
             output.replaceChildren(table(headers, rows), pager);
