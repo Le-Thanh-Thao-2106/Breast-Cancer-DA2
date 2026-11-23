@@ -7,6 +7,7 @@ from hashlib import sha256
 from pathlib import Path
 from secrets import token_urlsafe
 from threading import BoundedSemaphore
+from time import perf_counter
 from typing import Literal
 from urllib.parse import urlsplit
 from uuid import uuid4
@@ -181,23 +182,49 @@ def identity(request: Request):
     return user
 
 
-def count_attempt(scope, value, limit):
+def count_attempts(*attempts):
+    blocked = False
     with database() as db:
         db.execute("delete from breastcare_private.auth_limits where expires_at <= now()")
-        result = db.execute(
-            """
-            insert into breastcare_private.auth_limits (scope, bucket, attempts, expires_at)
-            values (%s, %s, 1, now() + interval '10 minutes')
-            on conflict (scope, bucket) do update
-            set attempts = least(breastcare_private.auth_limits.attempts + 1, %s)
-            returning attempts
-        """,
-            (scope, digest(value), limit + 1),
-        ).fetchone()
-    if result["attempts"] > limit:
+        for scope, value, limit in attempts:
+            result = db.execute(
+                """
+                insert into breastcare_private.auth_limits (scope, bucket, attempts, expires_at)
+                values (%s, %s, 1, now() + interval '10 minutes')
+                on conflict (scope, bucket) do update
+                set attempts = least(breastcare_private.auth_limits.attempts + 1, %s)
+                returning attempts
+                """,
+                (scope, digest(value), limit + 1),
+            ).fetchone()
+            if result["attempts"] > limit:
+                blocked = True
+                break
+
+    # Commit the counters before rejecting a request or verifying credentials.
+    if blocked:
         raise HTTPException(
             429, "Quá nhiều lần thử. Vui lòng thử lại sau vài phút.", headers={"Retry-After": "600"}
         )
+
+
+def portal_permission(db, account_id):
+    row = db.execute(
+        """
+        select allowed from breastcare_private.app_permissions
+        where account_id = %s and app = %s
+        """,
+        (account_id, breastcare_app),
+    ).fetchone()
+    return row["allowed"] if row else None
+
+
+def portal_profile_payload(account, permission):
+    return {
+        "email": account["email"],
+        "full_name": account["full_name"],
+        "permissions": {breastcare_app: permission},
+    }
 
 
 def ensure_portal_schema(db):
@@ -268,7 +295,7 @@ def hash_password(password):
 
 @router.post("/register", status_code=201, dependencies=[Depends(require_identity_json)])
 def register(body: Registration, request: Request, response: Response):
-    count_attempt("register_ip", request.client.host if request.client else "unknown", 20)
+    count_attempts(("register_ip", request.client.host if request.client else "unknown", 20))
     password_hash = hash_password(body.password)
     try:
         with database() as db:
@@ -285,28 +312,61 @@ def register(body: Registration, request: Request, response: Response):
     return {"registered": True}
 
 
-@router.post("/login", dependencies=[Depends(require_identity_json)])
+@router.post(
+    "/login",
+    dependencies=[Depends(require_identity_json)],
+    responses={
+        200: {
+            "headers": {
+                "Server-Timing": {
+                    "description": "Elapsed time in milliseconds for each sign-in stage.",
+                    "schema": {"type": "string"},
+                }
+            }
+        }
+    },
+)
 def login(body: Credentials, request: Request, response: Response):
+    started = perf_counter()
     ip = request.client.host if request.client else "unknown"
-    count_attempt("login_ip", ip, 100)
-    count_attempt("login_account_ip", f"{ip}|{body.email}", 10)
+    account_bucket = f"{ip}|{body.email}"
+    count_attempts(("login_ip", ip, 100), ("login_account_ip", account_bucket, 10))
+    limited = perf_counter()
+
     with database() as db:
+        connected = perf_counter()
         account = db.execute(
             """
-            select id, password_hash from breastcare_private.accounts where email = %s for no key update
-        """,
+            select id, email, full_name, password_hash
+            from breastcare_private.accounts where email = %s for no key update
+            """,
             (body.email,),
         ).fetchone()
+        checking = perf_counter()
         valid = verify_password(account["password_hash"] if account else dummy_hash, body.password)
+        checked = perf_counter()
         if not account or not valid:
             raise HTTPException(401, "Email hoặc mật khẩu không đúng.")
         db.execute(
             "delete from breastcare_private.auth_limits where scope = 'login_account_ip' and bucket = %s",
-            (digest(f"{ip}|{body.email}"),),
+            (digest(account_bucket),),
         )
         token = open_portal(db, account["id"])
+        profile = portal_profile_payload(account, portal_permission(db, account["id"]))
+
+    finished = perf_counter()
     no_store(response)
-    return {"portal_token": token}
+    response.headers["Server-Timing"] = ", ".join(
+        f"{name};dur={(end - start) * 1000:.1f}"
+        for name, start, end in (
+            ("rate-limit", started, limited),
+            ("db-connect", limited, connected),
+            ("account", connected, checking),
+            ("password", checking, checked),
+            ("session", checked, finished),
+        )
+    )
+    return {"portal_token": token, "profile": profile}
 
 
 @router.get("/portal/profile", dependencies=[Depends(require_identity_origin)])
@@ -314,19 +374,9 @@ def portal_profile(request: Request, response: Response):
     token_hash = session_token(request)
     with database() as db:
         portal = active_portal(db, token_hash)
-        permission = db.execute(
-            """
-            select allowed from breastcare_private.app_permissions
-            where account_id = %s and app = %s
-        """,
-            (portal["account_id"], breastcare_app),
-        ).fetchone()
+        profile = portal_profile_payload(portal, portal_permission(db, portal["account_id"]))
     no_store(response)
-    return {
-        "email": portal["email"],
-        "full_name": portal["full_name"],
-        "permissions": {breastcare_app: permission["allowed"] if permission else None},
-    }
+    return profile
 
 
 @router.post("/portal/launch", dependencies=[Depends(require_identity_json)])
@@ -345,15 +395,9 @@ def portal_launch(body: PortalLaunch, request: Request, response: Response):
             """,
                 (account_id, body.app, body.decision == "allow"),
             )
-        permission = db.execute(
-            """
-            select allowed from breastcare_private.app_permissions
-            where account_id = %s and app = %s
-        """,
-            (account_id, body.app),
-        ).fetchone()
+        permission = portal_permission(db, account_id)
         no_store(response)
-        if not permission or not permission["allowed"]:
+        if permission is not True:
             # Invalidate outstanding handoffs from this portal when the user denies access.
             if body.decision == "deny":
                 db.execute(
@@ -362,7 +406,7 @@ def portal_launch(body: PortalLaunch, request: Request, response: Response):
                 """,
                     (token_hash,),
                 )
-            return {"allowed": False}
+            return {"allowed": False, "profile": portal_profile_payload(portal, permission)}
 
         code = token_urlsafe(32)
         db.execute("delete from breastcare_private.sign_in_codes where expires_at <= now()")
@@ -374,7 +418,11 @@ def portal_launch(body: PortalLaunch, request: Request, response: Response):
         """,
             (digest(code), account_id, body.code_challenge.encode("ascii"), token_hash),
         )
-    return {"allowed": True, "authorization_code": code}
+    return {
+        "allowed": True,
+        "authorization_code": code,
+        "profile": portal_profile_payload(portal, permission),
+    }
 
 
 @router.post("/portal/logout", status_code=204, dependencies=[Depends(require_identity_origin)])
@@ -457,7 +505,7 @@ def logout(request: Request, response: Response):
 def change_password(
     body: PasswordChange, request: Request, response: Response, user=Depends(identity)
 ):
-    count_attempt("password_change", user["sub"], 10)
+    count_attempts(("password_change", user["sub"], 10))
     token_hash = session_token(request)
     with database() as db:
         ensure_portal_schema(db)
