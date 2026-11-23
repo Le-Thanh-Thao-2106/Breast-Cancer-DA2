@@ -1,8 +1,7 @@
 const BREASTCARE_API = "https://breast-cancer-da2-api.onrender.com";
 const BREASTCARE_SESSION_KEY = "bc_session_token";
 const IDENTITY_CENTER = "https://identity-center.onrender.com";
-const SIGN_IN_ATTEMPT_KEY = "bc_sign_in_attempt";
-const SIGN_IN_VALUE = /^[A-Za-z0-9_-]{43}$/;
+let breastCareUser = null;
 
 function fetchBreastCare(path, options = {}) {
     const token = sessionStorage.getItem(BREASTCARE_SESSION_KEY);
@@ -14,14 +13,19 @@ function fetchBreastCare(path, options = {}) {
 function clearBreastCareSession() {
     sessionStorage.removeItem(BREASTCARE_SESSION_KEY);
     sessionStorage.removeItem("bc_user");
+    sessionStorage.removeItem("bc_launch_attempt");
+    breastCareUser = null;
 }
 
 async function accountRequest(path, body) {
-    const options = body === undefined ? {} : {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body)
-    };
+    const options =
+        body === undefined
+            ? {}
+            : {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(body),
+              };
     const response = await fetchBreastCare(`/account/${path}`, options);
     if (response.status === 204) return null;
     const data = await response.json();
@@ -35,18 +39,25 @@ async function accountRequest(path, body) {
 }
 
 async function logoutBreastCare() {
+    const request = fetchBreastCare("/account/logout", {
+        method: "POST",
+        signal: AbortSignal.timeout(5000),
+    });
+    clearBreastCareSession();
+    document.body.classList.remove("account-ready");
+    const message = document.getElementById("accountLoading");
+    message.hidden = false;
+    message.textContent = "Đang đăng xuất…";
     try {
-        await accountRequest("logout", {});
-        clearBreastCareSession();
-        location.replace("login.html");
-    } catch (error) {
-        const message = document.getElementById("ssoMessage");
-        if (message) message.textContent = error.message;
+        await request;
+    } catch {
+        // The Identity Center login page also ends its previous portal session.
     }
+    location.replace(IDENTITY_CENTER + "/login.html");
 }
 
 function showBreastCareAccount(user) {
-    sessionStorage.setItem("bc_user", JSON.stringify(user));
+    breastCareUser = user;
     const name = document.getElementById("ssoUserName");
     const email = document.getElementById("ssoUserEmail");
     const adminLink = document.getElementById("adminNavLink");
@@ -73,77 +84,32 @@ function bindAccountForm(form, message, submit) {
     });
 }
 
-function encodeSignInValue(bytes) {
-    return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-async function openIdentityCenter(page) {
-    const state = encodeSignInValue(crypto.getRandomValues(new Uint8Array(32)));
-    const verifier = encodeSignInValue(crypto.getRandomValues(new Uint8Array(32)));
-    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
-    sessionStorage.setItem(SIGN_IN_ATTEMPT_KEY, JSON.stringify({ state, verifier }));
-    const params = new URLSearchParams({ from: "breastcare", state, code_challenge: encodeSignInValue(new Uint8Array(digest)) });
-    location.replace(`${IDENTITY_CENTER}/${page}.html?${params}`);
-}
-
-async function finishIdentitySignIn(params) {
-    const code = params.get("code");
-    const state = params.get("state");
-    history.replaceState(null, "", location.pathname);
-    const attempt = JSON.parse(sessionStorage.getItem(SIGN_IN_ATTEMPT_KEY) || "null");
-    if (!SIGN_IN_VALUE.test(code) || !SIGN_IN_VALUE.test(state) || attempt?.state !== state) {
-        throw new Error("Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.");
-    }
-    sessionStorage.removeItem(SIGN_IN_ATTEMPT_KEY);
-    await accountRequest("exchange", { code, verifier: attempt.verifier });
-    location.replace("index.html");
-}
-
 async function initBreastCare() {
-    const entry = document.body.dataset.accountEntry;
-    const message = document.getElementById("ssoMessage");
-
-    if (entry) {
-        const start = async () => {
-            try {
-                message.textContent = "Đang mở Identity Center…";
-                await openIdentityCenter(entry);
-            } catch (error) {
-                message.textContent = error.message;
-            }
-        };
-        document.getElementById("startIdentity").addEventListener("click", start);
-        const callback = new URLSearchParams(location.hash.slice(1));
-        if (callback.has("code") || callback.has("state")) {
-            try {
-                message.textContent = "Đang xác nhận đăng nhập…";
-                await finishIdentitySignIn(callback);
-            } catch (error) {
-                message.textContent = error.message;
-            }
-        } else {
-            await start();
-        }
-        return;
-    }
-
+    if (document.body.hasAttribute("data-account-launch") || location.pathname === "/") return;
+    const message = document.getElementById("accountLoading");
     document.getElementById("ssoLogoutBtn")?.addEventListener("click", logoutBreastCare);
     if (!sessionStorage.getItem(BREASTCARE_SESSION_KEY)) {
         clearBreastCareSession();
-        location.replace("login.html");
+        location.replace(IDENTITY_CENTER + "/login.html");
         return;
     }
+
     try {
         const user = await accountRequest("profile");
+        document.body.classList.add("account-ready");
+        message.hidden = true;
         showBreastCareAccount(user);
     } catch (error) {
         if (error.status === 401) {
             clearBreastCareSession();
-            location.replace("login.html");
-        } else if (message) {
-            message.textContent = error.message;
+            location.replace(IDENTITY_CENTER + "/login.html");
+        } else {
+            message.textContent = error.message || "Không thể xác minh phiên BreastCare.";
         }
     }
 }
 
+window.addEventListener("pageshow", (event) => {
+    if (event.persisted) location.reload();
+});
 document.addEventListener("DOMContentLoaded", initBreastCare);

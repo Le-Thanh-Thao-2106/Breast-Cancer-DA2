@@ -803,3 +803,18 @@ html[data-theme="dark"] .workspace {
     max-width: 100%;
     white-space: normal;
 }
+
+.workspace:not(.account-ready) > .app-container,
+.workspace.account-ready > #accountLoading {
+    display: none;
+}
+
+.workspace #accountLoading {
+    margin: clamp(20px, 6vw, 64px) auto;
+    width: min(90%, 560px);
+    padding: 13px 16px;
+    border: 1px solid var(--workspace-border);
+    border-radius: 10px;
+    background: var(--workspace-surface);
+    color: var(--workspace-text);
+}
