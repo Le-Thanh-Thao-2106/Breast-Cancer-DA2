@@ -1,297 +1,233 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <title>Lịch sử phân tích | Breast-Cancer SVM</title>
+        <title>Lịch sử phân tích | Breast-Cancer SVM</title>
 
-    <link rel="stylesheet" href="style.css">
-<link rel="stylesheet" href="modern.css">
-<link rel="stylesheet" href="studio.css">
-<link rel="stylesheet" href="compact.css"><link rel="stylesheet" href="upgrade.css"><link rel="stylesheet" href="research-layout.css?v=label-errors"></head>
+        <link rel="stylesheet" href="style.css" />
+        <link rel="stylesheet" href="modern.css" />
+        <link rel="stylesheet" href="studio.css" />
+        <link rel="stylesheet" href="compact.css" />
+        <link rel="stylesheet" href="upgrade.css" />
+        <link rel="stylesheet" href="research-layout.css?v=label-errors" />
+        <link rel="stylesheet" href="workspace-layout.css?v=workspace-1" />
+    </head>
 
-<body class="bc-research-page bc-page-history">
+    <body class="bc-research-page bc-page-history workspace">
+        <div class="app-container">
+            <!-- SIDEBAR -->
+            <aside class="sidebar">
+                <div class="brand">
+                    <div class="brand-icon">✚</div>
+                    <div>
+                        <h2>Breast-Cancer</h2>
+                        <span>SVM Research Platform</span>
+                    </div>
+                </div>
 
-<div class="app-container">
+                <div class="menu-label">MENU CHÍNH</div>
 
-    <!-- SIDEBAR -->
-    <aside class="sidebar">
+                <nav class="sidebar-menu">
+                    <a href="index.html" class="menu-item">◫ &nbsp; Tổng quan</a>
+                    <a href="analysis.html" class="menu-item">⌕ &nbsp; Phân tích một mẫu</a>
+                    <a href="batch.html" class="menu-item">▦ &nbsp; Phân tích file</a>
+                    <a href="history.html" class="menu-item">▤ &nbsp; Lịch sử phân tích</a>
+                    <a href="statistics.html" class="menu-item">◴ &nbsp; Thống kê cá nhân</a>
+                    <div class="menu-label">THÔNG TIN</div>
+                    <a href="compare.html" class="menu-item">▥ &nbsp; So sánh 4 kernel SVM</a>
+                    <a href="admin.html" class="menu-item" id="adminNavLink" hidden
+                        >♛ &nbsp; Quản trị hệ thống</a
+                    >
+                    <a href="model.html" class="menu-item">◇ &nbsp; Mô hình SVM</a>
+                    <a href="profile.html" class="menu-item">♙ &nbsp; Tài khoản của tôi</a>
+                    <a href="author.html" class="menu-item">✧ &nbsp; Tác giả & Hướng dẫn</a>
+                </nav>
 
-        <div class="brand">
-            <div class="brand-icon">✚</div>
-            <div>
-                <h2>Breast-Cancer</h2>
-                <span>SVM Research Platform</span>
-            </div>
+                <div class="sidebar-bottom">
+                    <div class="user-profile">
+                        <div class="avatar">ID</div>
+                        <div class="user-info">
+                            <strong id="ssoUserName">Người dùng</strong
+                            ><span id="ssoUserEmail">BreastCare</span>
+                        </div>
+                    </div>
+                    <button class="sidebar-logout" id="ssoLogoutBtn" type="button">
+                        Đăng xuất
+                    </button>
+                </div>
+            </aside>
+
+            <!-- MAIN CONTENT -->
+            <main class="main-content">
+                <!-- TOPBAR -->
+                <header class="topbar">
+                    <div>
+                        <span class="breadcrumb"> Trang chủ / Lịch sử phân tích </span>
+
+                        <h2>Lịch sử phân tích</h2>
+                    </div>
+
+                    <div class="topbar-right">
+                        <span class="status">● Hệ thống sẵn sàng</span>
+                        <div class="top-avatar">U</div>
+                    </div>
+                </header>
+
+                <!-- HISTORY CONTENT -->
+                <section class="dashboard">
+                    <header class="workspace-heading">
+                        <h1>Lịch sử phân tích</h1>
+                        <p>Xem lại kết quả của các lần phân tích đã lưu.</p>
+                    </header>
+                    <!-- STATISTICS -->
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon pink">▤</div>
+                            <span>Tổng lần phân tích</span>
+                            <h2 id="historyTotal">0</h2>
+                            <small>Tổng số lần đã thực hiện</small>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon purple">◈</div>
+                            <span>Malignant</span>
+                            <h2 id="historyMalignant">0</h2>
+                            <small>Kết quả phân loại lớp 0</small>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon green">◇</div>
+                            <span>Benign</span>
+                            <h2 id="historyBenign">0</h2>
+                            <small>Kết quả phân loại lớp 1</small>
+                        </div>
+
+                        <div class="stat-card">
+                            <div class="stat-icon blue">◷</div>
+                            <span>Phiên bản mô hình</span>
+                            <h2 id="historyModelVersion">--</h2>
+                            <small>Model version</small>
+                        </div>
+                    </div>
+
+                    <!-- HISTORY TABLE -->
+                    <div class="content-card history-card">
+                        <div class="card-heading">
+                            <div>
+                                <h3>Danh sách lịch sử</h3>
+
+                                <p>Các lần phân tích được sắp xếp theo thời gian mới nhất.</p>
+                            </div>
+
+                            <button type="button" id="clearHistoryButton" class="secondary-button">
+                                Xóa toàn bộ lịch sử
+                            </button>
+                        </div>
+
+                        <!-- FILTER -->
+                        <div class="history-toolbar">
+                            <input
+                                type="text"
+                                id="historySearch"
+                                placeholder="Tìm kiếm theo kết quả..."
+                            />
+
+                            <select id="historyFilter">
+                                <option value="all">Tất cả kết quả</option>
+                                <option value="Malignant">Malignant</option>
+                                <option value="Benign">Benign</option>
+                            </select>
+                        </div>
+
+                        <!-- TABLE -->
+                        <div class="history-table-wrapper">
+                            <table class="history-table">
+                                <thead>
+                                    <tr>
+                                        <th>STT</th>
+                                        <th>Thời gian</th>
+                                        <th>Kết quả</th>
+                                        <th>Malignant</th>
+                                        <th>Benign</th>
+                                        <th>Phiên bản</th>
+                                        <th>Thao tác</th>
+                                    </tr>
+                                </thead>
+
+                                <tbody id="historyTableBody">
+                                    <tr>
+                                        <td colspan="7" class="history-empty">
+                                            Chưa có dữ liệu lịch sử.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="history-footer">
+                            <span id="historyCount"> Hiển thị 0 bản ghi </span>
+                        </div>
+                    </div>
+
+                    <!-- DETAIL -->
+                    <div
+                        class="content-card history-detail-card"
+                        id="historyDetail"
+                        style="display: none"
+                    >
+                        <div class="card-heading">
+                            <div>
+                                <h3>Chi tiết lần phân tích</h3>
+
+                                <p id="detailTime"></p>
+                            </div>
+
+                            <button type="button" id="closeDetailButton" class="secondary-button">
+                                Đóng
+                            </button>
+                        </div>
+
+                        <div id="detailResult"></div>
+
+                        <h3 class="detail-feature-title">30 đặc trưng đầu vào</h3>
+
+                        <div id="detailFeatures" class="feature-grid"></div>
+                    </div>
+
+                    <!-- NOTICE -->
+                    <div class="notice">
+                        <span>ⓘ</span>
+
+                        <div>
+                            <strong>Lưu ý về dữ liệu lịch sử</strong>
+
+                            <p>
+                                Lịch sử hiện được lưu trên trình duyệt bằng Local Storage. Dữ liệu
+                                chỉ tồn tại trên trình duyệt và thiết bị hiện tại. Đây là hệ thống
+                                phục vụ mục đích học tập và nghiên cứu.
+                            </p>
+                        </div>
+                    </div>
+
+                    <footer>Breast-Cancer SVM © 2026 · Educational Research Platform</footer>
+                </section>
+            </main>
         </div>
 
-        <div class="menu-label">MENU CHÍNH</div>
-
-        <nav class="sidebar-menu">
-<a href="index.html" class="menu-item">◫ &nbsp; Tổng quan</a>
-<a href="analysis.html" class="menu-item">⌕ &nbsp; Phân tích một mẫu</a>
-<a href="batch.html" class="menu-item">▦ &nbsp; Phân tích file</a>
-<a href="history.html" class="menu-item">▤ &nbsp; Lịch sử phân tích</a>
-<a href="statistics.html" class="menu-item">◴ &nbsp; Thống kê cá nhân</a>
-<div class="menu-label">THÔNG TIN</div>
-<a href="compare.html" class="menu-item">▥ &nbsp; So sánh 4 kernel SVM</a>
-<a href="admin.html" class="menu-item" id="adminNavLink" hidden>♛ &nbsp; Quản trị hệ thống</a>
-<a href="model.html" class="menu-item">◇ &nbsp; Mô hình SVM</a>
-<a href="profile.html" class="menu-item">♙ &nbsp; Tài khoản của tôi</a>
-<a href="author.html" class="menu-item">✧ &nbsp; Tác giả & Hướng dẫn</a>
-</nav>
-
-        <div class="sidebar-bottom"><div class="user-profile"><div class="avatar">ID</div><div class="user-info"><strong id="ssoUserName">Người dùng</strong><span id="ssoUserEmail">BreastCare</span></div></div><button class="sidebar-logout" id="ssoLogoutBtn" type="button">Đăng xuất</button></div></aside>
-
-
-    <!-- MAIN CONTENT -->
-    <main class="main-content">
-
-        <!-- TOPBAR -->
-        <header class="topbar">
-
-            <div>
-                <span class="breadcrumb">
-                    Trang chủ / Lịch sử phân tích
-                </span>
-
-                <h2>Lịch sử phân tích</h2>
-            </div>
-
-            <div class="topbar-right">
-                <span class="status">● Hệ thống sẵn sàng</span>
-                <div class="top-avatar">U</div>
-            </div>
-
-        </header>
-
-
-        <!-- HISTORY CONTENT -->
-        <section class="dashboard">
-
-            <div class="welcome-section">
-
-                <div>
-                    <span class="welcome-tag">
-                        BREASTCARE SVM PLATFORM
-                    </span>
-
-                    <h1>Lịch sử phân tích</h1>
-
-                    <p>
-                        Theo dõi và xem lại các kết quả phân loại
-                        mẫu tế bào đã thực hiện.
-                    </p>
-                </div>
-
-                <div class="welcome-icon">▤</div>
-
-            </div>
-
-
-            <!-- STATISTICS -->
-            <div class="stats-grid">
-
-                <div class="stat-card">
-                    <div class="stat-icon pink">▤</div>
-                    <span>Tổng lần phân tích</span>
-                    <h2 id="historyTotal">0</h2>
-                    <small>Tổng số lần đã thực hiện</small>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-icon purple">◈</div>
-                    <span>Malignant</span>
-                    <h2 id="historyMalignant">0</h2>
-                    <small>Kết quả phân loại lớp 0</small>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-icon green">◇</div>
-                    <span>Benign</span>
-                    <h2 id="historyBenign">0</h2>
-                    <small>Kết quả phân loại lớp 1</small>
-                </div>
-
-                <div class="stat-card">
-                    <div class="stat-icon blue">◷</div>
-                    <span>Phiên bản mô hình</span>
-                    <h2 id="historyModelVersion">--</h2>
-                    <small>Model version</small>
-                </div>
-
-            </div>
-
-
-            <!-- HISTORY TABLE -->
-            <div class="content-card history-card">
-
-                <div class="card-heading">
-
-                    <div>
-                        <h3>Danh sách lịch sử</h3>
-
-                        <p>
-                            Các lần phân tích được sắp xếp
-                            theo thời gian mới nhất.
-                        </p>
-                    </div>
-
-                    <button
-                        type="button"
-                        id="clearHistoryButton"
-                        class="secondary-button"
-                    >
-                        Xóa toàn bộ lịch sử
-                    </button>
-
-                </div>
-
-
-                <!-- FILTER -->
-                <div class="history-toolbar">
-
-                    <input
-                        type="text"
-                        id="historySearch"
-                        placeholder="Tìm kiếm theo kết quả..."
-                    >
-
-                    <select id="historyFilter">
-                        <option value="all">Tất cả kết quả</option>
-                        <option value="Malignant">Malignant</option>
-                        <option value="Benign">Benign</option>
-                    </select>
-
-                </div>
-
-
-                <!-- TABLE -->
-                <div class="history-table-wrapper">
-
-                    <table class="history-table">
-
-                        <thead>
-                            <tr>
-                                <th>STT</th>
-                                <th>Thời gian</th>
-                                <th>Kết quả</th>
-                                <th>Malignant</th>
-                                <th>Benign</th>
-                                <th>Phiên bản</th>
-                                <th>Thao tác</th>
-                            </tr>
-                        </thead>
-
-                        <tbody id="historyTableBody">
-
-                            <tr>
-                                <td colspan="7" class="history-empty">
-                                    Chưa có dữ liệu lịch sử.
-                                </td>
-                            </tr>
-
-                        </tbody>
-
-                    </table>
-
-                </div>
-
-                <div class="history-footer">
-                    <span id="historyCount">
-                        Hiển thị 0 bản ghi
-                    </span>
-                </div>
-
-            </div>
-
-
-            <!-- DETAIL -->
-            <div
-                class="content-card history-detail-card"
-                id="historyDetail"
-                style="display: none;"
-            >
-
-                <div class="card-heading">
-
-                    <div>
-                        <h3>Chi tiết lần phân tích</h3>
-
-                        <p id="detailTime"></p>
-                    </div>
-
-                    <button
-                        type="button"
-                        id="closeDetailButton"
-                        class="secondary-button"
-                    >
-                        Đóng
-                    </button>
-
-                </div>
-
-                <div id="detailResult"></div>
-
-                <h3 class="detail-feature-title">
-                    30 đặc trưng đầu vào
-                </h3>
-
-                <div
-                    id="detailFeatures"
-                    class="feature-grid"
-                ></div>
-
-            </div>
-
-
-            <!-- NOTICE -->
-            <div class="notice">
-
-                <span>ⓘ</span>
-
-                <div>
-                    <strong>Lưu ý về dữ liệu lịch sử</strong>
-
-                    <p>
-                        Lịch sử hiện được lưu trên trình duyệt
-                        bằng Local Storage. Dữ liệu chỉ tồn tại
-                        trên trình duyệt và thiết bị hiện tại.
-                        Đây là hệ thống phục vụ mục đích học tập
-                        và nghiên cứu.
-                    </p>
-                </div>
-
-            </div>
-
-
-            <footer>
-                Breast-Cancer SVM © 2026 · Educational Research Platform
-            </footer>
-
-        </section>
-
-    </main>
-
-</div>
-
-
-
-<script src="auth.js"></script>
-<script src="user-storage.js"></script>
-
-<!-- Kết nối lịch sử với Supabase -->
-<script src="cloud-history.js?v=label-errors"></script>
-<script src="features-vi.js"></script>
-<script src="batch-results.js?v=prediction-filters"></script>
-
-<!-- Hiển thị lịch sử phân tích -->
-<script src="history.js?v=label-errors"></script>
-
-<script src="navigation.js"></script>
-<script src="theme.js"></script>
-</body>
+        <script src="auth.js?v=workspace-1"></script>
+        <script src="user-storage.js"></script>
+
+        <!-- Kết nối lịch sử với Supabase -->
+        <script src="cloud-history.js?v=label-errors"></script>
+        <script src="features-vi.js"></script>
+        <script src="batch-results.js?v=prediction-filters"></script>
+
+        <!-- Hiển thị lịch sử phân tích -->
+        <script src="history.js?v=label-errors"></script>
+
+        <script src="navigation.js?v=workspace-1"></script>
+        <script src="theme.js"></script>
+    </body>
 </html>
-

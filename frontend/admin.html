@@ -1,1 +1,163 @@
-<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Quản trị | Breast-Cancer</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="modern.css"><link rel="stylesheet" href="studio.css"><link rel="stylesheet" href="compact.css"><link rel="stylesheet" href="upgrade.css"></head><body><main style="max-width:1050px;margin:60px auto;padding:22px"><a href="index.html">← Về Breast-Cancer</a><section class="content-card"><h1>♛ Quản trị hệ thống</h1><p>Trang này chỉ hiển thị dữ liệu khi backend xác minh token OAuth của tài khoản quản trị.</p><p id="adminStatus">Đang xác minh quyền...</p><div id="adminContent" hidden><h3>Thông tin hệ thống</h3><div id="adminDetails"></div><h3>Hiệu năng mô hình</h3><div id="adminBenchmark"></div><p>Để thống kê tổng người dùng và số lượt dự đoán thực tế cần lưu lịch sử vào Supabase với chính sách RLS và quyền quản trị.</p></div></section></main><script src="auth.js"></script><script src="admin.js"></script><script src="admin-stats.js"></script><script src="theme.js"></script></body></html>
+<!doctype html>
+<html lang="vi">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Quản trị hệ thống | BreastCare SVM</title>
+        <link rel="stylesheet" href="style.css" />
+        <link rel="stylesheet" href="modern.css" />
+        <link rel="stylesheet" href="studio.css" />
+        <link rel="stylesheet" href="compact.css" />
+        <link rel="stylesheet" href="upgrade.css" />
+        <link rel="stylesheet" href="workspace-layout.css?v=workspace-1" />
+    </head>
+    <body class="workspace">
+        <div class="app-container">
+            <aside class="sidebar">
+                <div class="brand">
+                    <div class="brand-icon">✚</div>
+                    <div>
+                        <h2>Breast-Cancer</h2>
+                        <span>Medical AI · Research</span>
+                    </div>
+                </div>
+                <div class="menu-label">KHÔNG GIAN LÀM VIỆC</div>
+                <nav class="sidebar-menu">
+                    <a href="index.html" class="menu-item">◫ &nbsp; Tổng quan</a>
+                    <a href="analysis.html" class="menu-item">⌕ &nbsp; Phân tích một mẫu</a>
+                    <a href="batch.html" class="menu-item">▦ &nbsp; Phân tích file</a>
+                    <a href="history.html" class="menu-item">▤ &nbsp; Lịch sử phân tích</a>
+                    <a href="statistics.html" class="menu-item">◴ &nbsp; Thống kê cá nhân</a>
+                    <div class="menu-label">THÔNG TIN</div>
+                    <a href="compare.html" class="menu-item">▥ &nbsp; So sánh 4 kernel SVM</a>
+                    <a href="admin.html" class="menu-item" id="adminNavLink" hidden
+                        >♛ &nbsp; Quản trị hệ thống</a
+                    >
+                    <a href="model.html" class="menu-item">◇ &nbsp; Mô hình SVM</a>
+                    <a href="profile.html" class="menu-item">♙ &nbsp; Tài khoản của tôi</a>
+                    <a href="author.html" class="menu-item">✧ &nbsp; Tác giả & Hướng dẫn</a>
+                </nav>
+                <div class="sidebar-bottom">
+                    <div class="user-profile">
+                        <div class="avatar">ID</div>
+                        <div class="user-info">
+                            <strong id="ssoUserName">Người dùng</strong
+                            ><span id="ssoUserEmail">BreastCare</span>
+                        </div>
+                    </div>
+                    <button class="sidebar-logout" id="ssoLogoutBtn">Đăng xuất</button>
+                </div>
+            </aside>
+            <main class="main-content">
+                <section class="dashboard">
+                    <header class="workspace-heading">
+                        <h1>Quản trị hệ thống</h1>
+                        <p>Quản lý người dùng và theo dõi lịch sử phân tích trên toàn hệ thống.</p>
+                    </header>
+
+                    <p id="adminStatus" role="status">Đang xác minh quyền quản trị…</p>
+                    <div class="workspace-blocks" id="adminContent" hidden>
+                        <div class="workspace-admin-metrics" aria-label="Tổng quan hệ thống">
+                            <div class="content-card">
+                                <span>Người dùng</span><strong id="adminUsersTotal">—</strong>
+                            </div>
+                            <div class="content-card">
+                                <span>Phiên phân tích</span
+                                ><strong id="adminSessionsTotal">—</strong>
+                            </div>
+                            <div class="content-card">
+                                <span>Số mẫu</span><strong id="adminSamplesTotal">—</strong>
+                            </div>
+                        </div>
+                        <div class="workspace-tabs" aria-label="Mục quản trị">
+                            <button type="button" data-admin-view="users" aria-pressed="true">
+                                Người dùng
+                            </button>
+                            <button type="button" data-admin-view="activity" aria-pressed="false">
+                                Lịch sử toàn hệ thống
+                            </button>
+                        </div>
+                        <section
+                            class="content-card"
+                            id="adminUsers"
+                            aria-label="Danh sách người dùng"
+                        >
+                            <form id="adminSearchForm" class="workspace-search">
+                                <input
+                                    id="adminSearch"
+                                    type="search"
+                                    maxlength="255"
+                                    placeholder="Tìm theo tên hoặc email"
+                                    aria-label="Tìm theo tên hoặc email"
+                                />
+                                <button type="submit" class="workspace-button">Tìm kiếm</button>
+                            </form>
+                            <div class="workspace-table">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Họ tên</th>
+                                            <th>Vai trò</th>
+                                            <th>Ngày đăng ký</th>
+                                            <th>Số phiên</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="adminUserRows"></tbody>
+                                </table>
+                            </div>
+                            <div class="workspace-pagination" id="adminUserPaging"></div>
+                        </section>
+                        <section
+                            class="content-card"
+                            id="adminHistory"
+                            aria-labelledby="adminHistoryHeading"
+                        >
+                            <h2 id="adminHistoryHeading">Hoạt động gần đây toàn hệ thống</h2>
+                            <div class="workspace-table">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>Thời gian</th>
+                                            <th>Người dùng</th>
+                                            <th>Loại phân tích</th>
+                                            <th>Kernel</th>
+                                            <th>Số mẫu</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="adminHistoryRows"></tbody>
+                                </table>
+                            </div>
+                            <div class="workspace-pagination" id="adminHistoryPaging"></div>
+                        </section>
+                        <details class="content-card">
+                            <summary>Thông tin và hiệu năng mô hình</summary>
+                            <div id="adminDetails" class="workspace-table"></div>
+                        </details>
+                    </div>
+                    <dialog
+                        class="workspace-drawer"
+                        id="adminDrawer"
+                        aria-labelledby="adminDrawerTitle"
+                    >
+                        <header class="workspace-drawer-header">
+                            <h2 id="adminDrawerTitle">Hoạt động người dùng</h2>
+                            <form method="dialog">
+                                <button class="workspace-secondary" aria-label="Đóng">×</button>
+                            </form>
+                        </header>
+                        <p class="workspace-note" id="adminDrawerSummary" role="status"></p>
+                        <ul class="workspace-activity-items" id="adminDrawerItems"></ul>
+                        <div class="workspace-pagination" id="adminDrawerPaging"></div>
+                    </dialog>
+
+                    <p id="ssoMessage" role="status"></p>
+                </section>
+            </main>
+        </div>
+        <script src="auth.js?v=workspace-1"></script>
+        <script src="user-storage.js"></script>
+        <script src="admin.js?v=workspace-1"></script>
+        <script src="navigation.js?v=workspace-1"></script>
+        <script src="theme.js"></script>
+    </body>
+</html>

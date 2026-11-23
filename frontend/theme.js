@@ -1,1 +1,20 @@
-(function(){const stored=localStorage.getItem('bc_theme')||'light';document.documentElement.dataset.theme=stored;const btn=document.createElement('button');btn.type='button';btn.className='bc-theme-toggle';btn.title='Chuyển sáng / tối';function update(){btn.textContent=document.documentElement.dataset.theme==='dark'?'☀ Chế độ sáng':'☾ Chế độ tối'}update();btn.onclick=()=>{const next=document.documentElement.dataset.theme==='dark'?'light':'dark';document.documentElement.dataset.theme=next;localStorage.setItem('bc_theme',next);update()};document.body.append(btn)})();
+(function () {
+    const stored = localStorage.getItem("bc_theme") || "light";
+    document.documentElement.dataset.theme = stored;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "bc-theme-toggle";
+    btn.title = "Chuyển sáng / tối";
+    function update() {
+        btn.textContent =
+            document.documentElement.dataset.theme === "dark" ? "☀ Chế độ sáng" : "☾ Chế độ tối";
+    }
+    update();
+    btn.onclick = () => {
+        const next = document.documentElement.dataset.theme === "dark" ? "light" : "dark";
+        document.documentElement.dataset.theme = next;
+        localStorage.setItem("bc_theme", next);
+        update();
+    };
+    document.body.append(btn);
+})();

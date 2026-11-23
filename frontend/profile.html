@@ -1,31 +1,224 @@
-<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tài khoản của tôi | Breast-Cancer SVM</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="modern.css">
-<link rel="stylesheet" href="studio.css"><link rel="stylesheet" href="compact.css"><link rel="stylesheet" href="upgrade.css"></head><body><div class="app-container"><aside class="sidebar"><div class="brand"><div class="brand-icon">✚</div><div><h2>Breast-Cancer</h2><span>Medical AI · Research</span></div></div><div class="menu-label">KHÔNG GIAN LÀM VIỆC</div><nav class="sidebar-menu">
-<a href="index.html" class="menu-item">◫ &nbsp; Tổng quan</a>
-<a href="analysis.html" class="menu-item">⌕ &nbsp; Phân tích một mẫu</a>
-<a href="batch.html" class="menu-item">▦ &nbsp; Phân tích file</a>
-<a href="history.html" class="menu-item">▤ &nbsp; Lịch sử phân tích</a>
-<a href="statistics.html" class="menu-item">◴ &nbsp; Thống kê cá nhân</a>
-<div class="menu-label">THÔNG TIN</div>
-<a href="compare.html" class="menu-item">▥ &nbsp; So sánh 4 kernel SVM</a>
-<a href="admin.html" class="menu-item" id="adminNavLink" hidden>♛ &nbsp; Quản trị hệ thống</a>
-<a href="model.html" class="menu-item">◇ &nbsp; Mô hình SVM</a>
-<a href="profile.html" class="menu-item">♙ &nbsp; Tài khoản của tôi</a>
-<a href="author.html" class="menu-item">✧ &nbsp; Tác giả & Hướng dẫn</a>
-</nav><div class="sidebar-bottom"><div class="user-profile"><div class="avatar">ID</div><div class="user-info"><strong id="ssoUserName">Người dùng</strong><span id="ssoUserEmail">BreastCare</span></div></div><button class="sidebar-logout" id="ssoLogoutBtn">Đăng xuất</button></div></aside><main class="main-content"><header class="topbar"><div><span class="breadcrumb">Breast-Cancer / Tài khoản của tôi</span><h2>Tài khoản của tôi</h2></div><div class="topbar-right"><span class="status">● Nền tảng nghiên cứu</span></div></header><section class="dashboard"><div class="hero-new"><div><div class="eyebrow">BREASTCARE</div><h1>Hồ sơ của bạn</h1><p>Họ tên và email đã đăng ký với BreastCare.</p></div></div><div class="content-card profile-panel"><div class="profile-monogram" id="profileAvatar">U</div><div><span class="eyebrow">TÀI KHOẢN ĐANG ĐĂNG NHẬP</span><h2 id="profileName">Đang tải...</h2><p id="profileEmail"></p><p class="muted" id="profileId"></p><div class="bc-avatar-actions"><label class="secondary-button" for="avatarUpload">Đổi ảnh đại diện</label><input type="file" id="avatarUpload" accept="image/png,image/jpeg,image/webp" hidden><button type="button" class="secondary-button" id="removeAvatar">Xóa ảnh</button></div><p class="bc-inline-message" id="avatarMessage">Ảnh được lưu trên trình duyệt này theo tài khoản.</p><button class="primary-button" id="profileLogout">Đăng xuất</button></div></div><div class="account-grid">
-<section class="content-card account-action">
-<h3>Bảo mật tài khoản</h3>
-<details><summary>Đổi mật khẩu</summary>
-<form id="passwordForm" class="auth-form">
-<label for="currentPassword">Mật khẩu hiện tại</label>
-<input id="currentPassword" type="password" autocomplete="current-password" maxlength="128" required>
-<label for="newPassword">Mật khẩu mới</label>
-<input id="newPassword" type="password" autocomplete="new-password" minlength="8" maxlength="128" required>
-<button type="submit" class="auth-button">Lưu mật khẩu</button>
-<p id="passwordMessage" role="status"></p>
-</form>
-</details>
-</section>
-<section class="content-card account-action"><div class="action-symbol">⇄</div><h3>Đổi tài khoản SSO</h3><p>Đăng xuất khỏi phiên BreastCare hiện tại rồi đăng nhập bằng tài khoản khác.</p><button class="action-link" id="switchAccount" type="button">Đổi tài khoản <span>→</span></button></section>
-<section class="content-card account-action"><div class="action-symbol">◷</div><h3>Hoạt động cá nhân</h3><p>Thống kê các lần phân tích được lưu riêng cho tài khoản đang sử dụng.</p><div class="account-metric"><strong id="profileAnalysisCount">0</strong><span>lần phân tích đã lưu</span></div><a class="action-link" href="history.html">Xem lịch sử <span>→</span></a></section>
+<!doctype html>
+<html lang="vi">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Hồ sơ của tôi | BreastCare SVM</title>
+        <link rel="stylesheet" href="style.css" />
+        <link rel="stylesheet" href="modern.css" />
+        <link rel="stylesheet" href="studio.css" />
+        <link rel="stylesheet" href="compact.css" />
+        <link rel="stylesheet" href="upgrade.css" />
+        <link rel="stylesheet" href="workspace-layout.css?v=workspace-1" />
+    </head>
+    <body class="workspace">
+        <div class="app-container">
+            <aside class="sidebar">
+                <div class="brand">
+                    <div class="brand-icon">✚</div>
+                    <div>
+                        <h2>Breast-Cancer</h2>
+                        <span>Medical AI · Research</span>
+                    </div>
+                </div>
+                <div class="menu-label">KHÔNG GIAN LÀM VIỆC</div>
+                <nav class="sidebar-menu">
+                    <a href="index.html" class="menu-item">◫ &nbsp; Tổng quan</a>
+                    <a href="analysis.html" class="menu-item">⌕ &nbsp; Phân tích một mẫu</a>
+                    <a href="batch.html" class="menu-item">▦ &nbsp; Phân tích file</a>
+                    <a href="history.html" class="menu-item">▤ &nbsp; Lịch sử phân tích</a>
+                    <a href="statistics.html" class="menu-item">◴ &nbsp; Thống kê cá nhân</a>
+                    <div class="menu-label">THÔNG TIN</div>
+                    <a href="compare.html" class="menu-item">▥ &nbsp; So sánh 4 kernel SVM</a>
+                    <a href="admin.html" class="menu-item" id="adminNavLink" hidden
+                        >♛ &nbsp; Quản trị hệ thống</a
+                    >
+                    <a href="model.html" class="menu-item">◇ &nbsp; Mô hình SVM</a>
+                    <a href="profile.html" class="menu-item">♙ &nbsp; Tài khoản của tôi</a>
+                    <a href="author.html" class="menu-item">✧ &nbsp; Tác giả & Hướng dẫn</a>
+                </nav>
+                <div class="sidebar-bottom">
+                    <div class="user-profile">
+                        <div class="avatar">ID</div>
+                        <div class="user-info">
+                            <strong id="ssoUserName">Người dùng</strong
+                            ><span id="ssoUserEmail">BreastCare</span>
+                        </div>
+                    </div>
+                    <button class="sidebar-logout" id="ssoLogoutBtn">Đăng xuất</button>
+                </div>
+            </aside>
+            <main class="main-content">
+                <section class="dashboard">
+                    <header class="workspace-heading">
+                        <h1>Hồ sơ của tôi</h1>
+                    </header>
 
-</div><div class="notice"><span>ⓘ</span><div><strong>Lưu ý y khoa</strong><p>Kết quả của mô hình chỉ phục vụ học tập và nghiên cứu, không thay thế kết luận của bác sĩ.</p></div></div></section></main></div><p id="ssoMessage"></p><script src="auth.js"></script><script src="user-storage.js"></script><script src="profile.js"></script><script src="navigation.js"></script><script src="theme.js"></script></body></html>
+                    <div class="workspace-blocks">
+                        <section
+                            class="content-card workspace-avatar-card"
+                            aria-label="Thông tin tài khoản"
+                        >
+                            <div class="profile-monogram" id="profileAvatar">U</div>
+                            <div>
+                                <h2 id="profileName">Đang tải…</h2>
+                                <p id="profileEmail"></p>
+                                <p class="workspace-note" id="avatarMessage" role="status"></p>
+                            </div>
+                            <div class="workspace-actions">
+                                <label class="workspace-secondary" for="avatarUpload"
+                                    >Đổi ảnh</label
+                                >
+                                <input
+                                    type="file"
+                                    id="avatarUpload"
+                                    accept="image/png,image/jpeg,image/webp"
+                                    class="workspace-file-input"
+                                    aria-label="Đổi ảnh đại diện"
+                                />
+                                <button type="button" class="workspace-secondary" id="removeAvatar">
+                                    Xóa ảnh
+                                </button>
+                            </div>
+                        </section>
+                        <div class="workspace-panel-grid">
+                            <section class="content-card">
+                                <h2 class="workspace-card-title">
+                                    <span class="workspace-icon" aria-hidden="true">♙</span>Bảo mật
+                                    tài khoản
+                                </h2>
+                                <h3>Đổi mật khẩu</h3>
+                                <form id="passwordForm" class="workspace-password">
+                                    <label for="currentPassword">Mật khẩu hiện tại</label>
+                                    <div class="workspace-password-field">
+                                        <input
+                                            id="currentPassword"
+                                            type="password"
+                                            autocomplete="current-password"
+                                            maxlength="128"
+                                            required
+                                        />
+                                        <button
+                                            type="button"
+                                            data-password-toggle="currentPassword"
+                                            aria-label="Hiển thị mật khẩu hiện tại"
+                                            aria-pressed="false"
+                                        >
+                                            <span class="workspace-eye" aria-hidden="true"></span>
+                                        </button>
+                                    </div>
+
+                                    <label for="newPassword">Mật khẩu mới</label>
+                                    <div class="workspace-password-field">
+                                        <input
+                                            id="newPassword"
+                                            type="password"
+                                            autocomplete="new-password"
+                                            minlength="8"
+                                            maxlength="128"
+                                            required
+                                        />
+                                        <button
+                                            type="button"
+                                            data-password-toggle="newPassword"
+                                            aria-label="Hiển thị mật khẩu mới"
+                                            aria-pressed="false"
+                                        >
+                                            <span class="workspace-eye" aria-hidden="true"></span>
+                                        </button>
+                                    </div>
+
+                                    <label for="confirmNewPassword">Nhập lại mật khẩu mới</label>
+                                    <div class="workspace-password-field">
+                                        <input
+                                            id="confirmNewPassword"
+                                            type="password"
+                                            autocomplete="new-password"
+                                            minlength="8"
+                                            maxlength="128"
+                                            required
+                                        />
+                                        <button
+                                            type="button"
+                                            data-password-toggle="confirmNewPassword"
+                                            aria-label="Hiển thị nhập lại mật khẩu mới"
+                                            aria-pressed="false"
+                                        >
+                                            <span class="workspace-eye" aria-hidden="true"></span>
+                                        </button>
+                                    </div>
+                                    <button type="submit" class="workspace-button">
+                                        Lưu mật khẩu
+                                    </button>
+                                    <p id="passwordMessage" role="status"></p>
+                                </form>
+                            </section>
+                            <section class="content-card">
+                                <h2 class="workspace-card-title">
+                                    <span class="workspace-icon" aria-hidden="true">⚿</span>Phiên
+                                    đăng nhập Identity Center
+                                </h2>
+                                <div class="workspace-session-state">
+                                    <strong>Phiên hiện tại</strong>
+                                    <span id="profileSessionState" class="workspace-state"
+                                        >Đang xác minh</span
+                                    >
+                                </div>
+                                <div class="workspace-session-app">
+                                    <span>Ứng dụng đang dùng</span>
+                                    <strong>BreastCare</strong>
+                                </div>
+                                <div class="workspace-actions">
+                                    <a
+                                        class="workspace-button"
+                                        href="https://identity-center.onrender.com/index.html"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        >Mở Identity Center ↗</a
+                                    >
+                                    <button
+                                        type="button"
+                                        class="workspace-secondary"
+                                        id="switchAccount"
+                                    >
+                                        Đổi tài khoản
+                                    </button>
+                                </div>
+                                <p class="workspace-note">
+                                    Chọn ứng dụng trong Identity Center nếu ứng dụng đó đã tích hợp
+                                    đăng nhập.
+                                </p>
+                            </section>
+                        </div>
+                        <section class="content-card workspace-activity-row">
+                            <h2>
+                                <span class="workspace-icon" aria-hidden="true">◷</span> Hoạt động
+                                cá nhân
+                            </h2>
+                            <span class="workspace-note" id="profileAnalysisCount"></span>
+                            <a class="workspace-secondary" href="history.html">Xem lịch sử →</a>
+                        </section>
+
+                        <div class="notice">
+                            <span aria-hidden="true">ⓘ</span>
+                            <div>
+                                <strong>Lưu ý y khoa</strong>
+                                <p>
+                                    Kết quả của mô hình phục vụ học tập và nghiên cứu, không thay
+                                    thế kết luận của bác sĩ.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p id="ssoMessage" role="status"></p>
+                </section>
+            </main>
+        </div>
+        <script src="auth.js?v=workspace-1"></script>
+        <script src="user-storage.js"></script>
+        <script src="profile.js?v=workspace-1"></script>
+        <script src="navigation.js?v=workspace-1"></script>
+        <script src="theme.js"></script>
+    </body>
+</html>

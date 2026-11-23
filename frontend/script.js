@@ -9,13 +9,11 @@ const form = document.getElementById("predictionForm");
 const resultContainer = document.getElementById("result");
 const predictButton = document.getElementById("predictButton");
 
-
 /* =========================
    TẠO 30 Ô NHẬP
 ========================= */
 
 featureNames.forEach((featureName, index) => {
-
     const group = document.createElement("div");
     group.className = "feature-group";
 
@@ -44,10 +42,9 @@ featureNames.forEach((featureName, index) => {
     }
 });
 
-
 const featureTabs = [...form.querySelectorAll('[role="tab"]')];
 function activateFeatureTab(active) {
-    featureTabs.forEach(tab => {
+    featureTabs.forEach((tab) => {
         const selected = tab === active;
         tab.setAttribute("aria-selected", String(selected));
         tab.tabIndex = selected ? 0 : -1;
@@ -56,12 +53,12 @@ function activateFeatureTab(active) {
 }
 featureTabs.forEach((tab, index) => {
     tab.addEventListener("click", () => activateFeatureTab(tab));
-    tab.addEventListener("keydown", event => {
+    tab.addEventListener("keydown", (event) => {
         const target = {
             ArrowLeft: (index + featureTabs.length - 1) % featureTabs.length,
             ArrowRight: (index + 1) % featureTabs.length,
             Home: 0,
-            End: featureTabs.length - 1
+            End: featureTabs.length - 1,
         }[event.key];
         if (target === undefined) return;
         event.preventDefault();
@@ -84,7 +81,7 @@ document.getElementById("fillResearchSample").addEventListener("click", () => {
     referenceLabel = sample.label;
     featureMessage.textContent = "Đã điền đủ 30 đặc trưng.";
 });
-form.addEventListener("input", event => {
+form.addEventListener("input", (event) => {
     if (event.target.matches('input[type="number"]')) referenceLabel = null;
     featureMessage.textContent = "";
 });
@@ -99,10 +96,11 @@ form.addEventListener("reset", () => {
 ========================= */
 
 form.addEventListener("submit", async (event) => {
-
     event.preventDefault();
 
-    const invalidIndex = featureNames.findIndex(name => !form.elements.namedItem(name).validity.valid);
+    const invalidIndex = featureNames.findIndex(
+        (name) => !form.elements.namedItem(name).validity.valid,
+    );
     if (invalidIndex !== -1) {
         const input = form.elements.namedItem(featureNames[invalidIndex]);
         activateFeatureTab(featureTabs[Math.floor(invalidIndex / 10)]);
@@ -122,7 +120,6 @@ form.addEventListener("submit", async (event) => {
     `;
 
     try {
-
         const inputs = form.querySelectorAll("input");
 
         const features = {};
@@ -132,37 +129,34 @@ form.addEventListener("submit", async (event) => {
         });
 
         const predictionStarted = performance.now();
-        const selectedKernels=[...document.querySelectorAll('#kernelOptions input:checked')].map(x=>x.value);
-        if(!selectedKernels.length)throw Error('Vui lòng chọn ít nhất một kernel.');
+        const selectedKernels = [...document.querySelectorAll("#kernelOptions input:checked")].map(
+            (x) => x.value,
+        );
+        if (!selectedKernels.length) throw Error("Vui lòng chọn ít nhất một kernel.");
         const response = await fetch(`${API_URL}/predict/compare`, {
             method: "POST",
 
             headers: {
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
             },
 
             body: JSON.stringify({
-                features: features, kernels:selectedKernels
-            })
+                features: features,
+                kernels: selectedKernels,
+            }),
         });
 
         const compareData = await response.json();
         const data = compareData.results?.[0]?.predictions?.[0] || compareData;
         const predictionElapsedMs = performance.now() - predictionStarted;
 
-
         /* =========================
            XỬ LÝ LỖI API
         ========================= */
 
         if (!response.ok) {
-            throw new Error(
-                data.detail
-                    ? JSON.stringify(data.detail)
-                    : "API trả về lỗi."
-            );
+            throw new Error(data.detail ? JSON.stringify(data.detail) : "API trả về lỗi.");
         }
-
 
         /* =========================
         LƯU LỊCH SỬ PHÂN TÍCH
@@ -181,15 +175,14 @@ form.addEventListener("submit", async (event) => {
             probabilityMalignant: data.probability_malignant,
             probabilityBenign: data.probability_benign,
 
-            modelVersion: "WDBC benchmark", kernel:selectedKernels.join(", ")
+            modelVersion: "WDBC benchmark",
+            kernel: selectedKernels.join(", "),
         };
 
         let analysisHistory = [];
 
         try {
-            analysisHistory = JSON.parse(
-                localStorage.getItem(getUserHistoryKey()) || "[]"
-            );
+            analysisHistory = JSON.parse(localStorage.getItem(getUserHistoryKey()) || "[]");
 
             if (!Array.isArray(analysisHistory)) {
                 analysisHistory = [];
@@ -203,12 +196,8 @@ form.addEventListener("submit", async (event) => {
         // Giới hạn tối đa 100 lần phân tích
         analysisHistory = analysisHistory.slice(0, 100);
 
-        localStorage.setItem(
-            getUserHistoryKey(),
-            JSON.stringify(analysisHistory)
-        );
+        localStorage.setItem(getUserHistoryKey(), JSON.stringify(analysisHistory));
 
-        
         try {
             const cloudSession = {
                 id: "single_" + Date.now(),
@@ -223,13 +212,13 @@ form.addEventListener("submit", async (event) => {
                     predicted_label: data.predicted_label,
                     probability_malignant: data.probability_malignant,
                     probability_benign: data.probability_benign,
-                    elapsed_ms: predictionElapsedMs
+                    elapsed_ms: predictionElapsedMs,
                 },
 
                 results: {
                     features: features,
-                    predictions: compareData.results
-                }
+                    predictions: compareData.results,
+                },
             };
 
             if (typeof window.bcSaveCloudSession === "function") {
@@ -242,17 +231,13 @@ form.addEventListener("submit", async (event) => {
             console.error("Không lưu được lịch sử Supabase:", error);
         }
 
-
-
         /* =========================
            HIỂN THỊ KẾT QUẢ
         ========================= */
 
-        const malignantPercent =
-            (data.probability_malignant * 100).toFixed(2);
+        const malignantPercent = (data.probability_malignant * 100).toFixed(2);
 
-        const benignPercent =
-            (data.probability_benign * 100).toFixed(2);
+        const benignPercent = (data.probability_benign * 100).toFixed(2);
 
         resultContainer.innerHTML = `
 
@@ -262,7 +247,10 @@ form.addEventListener("submit", async (event) => {
                     Kết quả: ${data.predicted_label}
                 </h3>
 
-                <p class="bc-inline-message">Thời gian yêu cầu dự đoán: ${predictionElapsedMs.toFixed(1)} ms (bao gồm mạng và API) · Kernel: ${selectedKernels.join(", ")}</p>
+                <p class="bc-inline-message">
+                    Thời gian yêu cầu dự đoán: ${predictionElapsedMs.toFixed(1)} ms (bao gồm mạng và API)
+                    · Kernel: ${selectedKernels.join(", ")}
+                </p>
                 <div class="result-info">
 
                     <div class="result-item">
@@ -282,7 +270,7 @@ form.addEventListener("submit", async (event) => {
 
                     <div class="result-item">
                         <strong>Model version</strong>
-                        ${(data.model_version || "WDBC")}
+                        ${data.model_version || "WDBC"}
                     </div>
 
                 </div>
@@ -296,32 +284,46 @@ form.addEventListener("submit", async (event) => {
         if (labelAtSubmit !== null) {
             const reference = document.createElement("p");
             reference.className = "bc-inline-message";
-            reference.textContent = `Nhãn thật của mẫu nghiên cứu: ${labelAtSubmit} (${labelAtSubmit === 0 ? "Ác tính" : "Lành tính"}) · ${labelAtSubmit === data.predicted_class ? "Trùng khớp" : "Không trùng khớp"} với ${selectedKernels[0]}.`;
+            const labelName = labelAtSubmit === 0 ? "Ác tính" : "Lành tính";
+            const match = labelAtSubmit === data.predicted_class ? "Trùng khớp" : "Không trùng khớp";
+            reference.textContent =
+                `Nhãn thật của mẫu nghiên cứu: ${labelAtSubmit} (${labelName}) · ${match} với ${selectedKernels[0]}.`;
             resultContainer.prepend(reference);
         }
-        if(compareData.results.length>1){
-            const heading=document.createElement('h3');heading.textContent='So sánh dự đoán giữa các kernel';
-            const table=document.createElement('table');table.className='bc-compare-table';
-            table.innerHTML='<tr><th>Kernel</th><th>Phân loại</th><th>Ác tính</th><th>Lành tính</th><th>Suy luận (ms)</th></tr>';
-            compareData.results.forEach(item=>{const v=item.predictions[0],tr=document.createElement('tr');[item.kernel,v.predicted_label,(v.probability_malignant*100).toFixed(2)+'%',(v.probability_benign*100).toFixed(2)+'%',item.elapsed_ms.toFixed(3)].forEach(x=>{const td=document.createElement('td');td.textContent=x;tr.append(td)});table.append(tr)});
-            resultContainer.append(heading,table);
+        if (compareData.results.length > 1) {
+            const heading = document.createElement("h3");
+            heading.textContent = "So sánh dự đoán giữa các kernel";
+            const table = document.createElement("table");
+            table.className = "bc-compare-table";
+            table.innerHTML =
+                "<tr><th>Kernel</th><th>Phân loại</th><th>Ác tính</th><th>Lành tính</th><th>Suy luận (ms)</th></tr>";
+            compareData.results.forEach((item) => {
+                const v = item.predictions[0],
+                    tr = document.createElement("tr");
+                [
+                    item.kernel,
+                    v.predicted_label,
+                    (v.probability_malignant * 100).toFixed(2) + "%",
+                    (v.probability_benign * 100).toFixed(2) + "%",
+                    item.elapsed_ms.toFixed(3),
+                ].forEach((x) => {
+                    const td = document.createElement("td");
+                    td.textContent = x;
+                    tr.append(td);
+                });
+                table.append(tr);
+            });
+            resultContainer.append(heading, table);
         }
-
-
     } catch (error) {
-
         const warning = document.createElement("p");
         warning.className = "warning";
         warning.textContent = "Không thể phân tích: " + error.message;
         resultContainer.replaceChildren(warning);
 
         console.error("Prediction error:", error);
-
     } finally {
-
         predictButton.disabled = false;
         predictButton.textContent = "Phân tích";
-
     }
-
 });

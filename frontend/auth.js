@@ -101,9 +101,7 @@ async function finishIdentitySignIn(params) {
 
 async function initBreastCare() {
     const entry = document.body.dataset.accountEntry;
-    const passwordForm = document.getElementById("passwordForm");
     const message = document.getElementById("ssoMessage");
-    const value = (id) => document.getElementById(id).value;
 
     if (entry) {
         const start = async () => {
@@ -128,14 +126,6 @@ async function initBreastCare() {
         }
         return;
     }
-
-    bindAccountForm(passwordForm, document.getElementById("passwordMessage"), async () => {
-        await accountRequest("password", {
-            current_password: value("currentPassword"), password: value("newPassword")
-        });
-        passwordForm.reset();
-        document.getElementById("passwordMessage").textContent = "Đã đổi mật khẩu.";
-    });
 
     document.getElementById("ssoLogoutBtn")?.addEventListener("click", logoutBreastCare);
     if (!sessionStorage.getItem(BREASTCARE_SESSION_KEY)) {

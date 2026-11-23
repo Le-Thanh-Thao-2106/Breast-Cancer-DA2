@@ -1,6 +1,6 @@
 from pathlib import Path
 import json, joblib
-import  numpy as np
+import numpy as np
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exception_handlers import request_validation_exception_handler
@@ -10,8 +10,16 @@ from fastapi.middleware.cors import CORSMiddleware
 from psycopg.errors import CheckViolation, UniqueViolation
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel, Field, StrictInt
-from .accounts import database, identity, identity_origin, require_admin, require_browser_origin, router as account_router, web_origin
-
+from .admin_activity import router as admin_activity_router
+from .accounts import (
+    database,
+    identity,
+    identity_origin,
+    require_admin,
+    require_browser_origin,
+    router as account_router,
+    web_origin,
+)
 
 # =========================
 # Đường dẫn đến model
@@ -19,7 +27,7 @@ from .accounts import database, identity, identity_origin, require_admin, requir
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 MAX_BATCH_SAMPLES = 600
-HISTORY_BATCH_MIGRATION = BASE_DIR / 'supabase_batch_600.sql'
+HISTORY_BATCH_MIGRATION = BASE_DIR / "supabase_batch_600.sql"
 
 MODEL_PATH = BASE_DIR / "artifacts" / "breast_cancer_svm.joblib"
 METADATA_PATH = BASE_DIR / "artifacts" / "metadata.json"
@@ -45,7 +53,7 @@ FEATURE_NAMES = metadata["feature_names"]
 app = FastAPI(
     title="Breast Cancer SVM API",
     version=metadata["model_version"],
-    description="Educational demonstration only"
+    description="Educational demonstration only",
 )
 app.add_middleware(
     CORSMiddleware,
@@ -58,6 +66,7 @@ app.add_middleware(
 # =========================
 # Request / Response
 # =========================
+
 
 class PredictionRequest(BaseModel):
     features: dict[str, float]
@@ -76,6 +85,7 @@ class PredictionResponse(BaseModel):
 # Kiểm tra dữ liệu đầu vào
 # =========================
 
+
 def build_vector(features: dict[str, float]):
 
     expected = set(FEATURE_NAMES)
@@ -87,10 +97,7 @@ def build_vector(features: dict[str, float]):
     if missing or extra:
         raise HTTPException(
             status_code=422,
-            detail={
-                "missing_features": sorted(missing),
-                "extra_features": sorted(extra)
-            }
+            detail={"missing_features": sorted(missing), "extra_features": sorted(extra)},
         )
 
     values = []
@@ -100,10 +107,7 @@ def build_vector(features: dict[str, float]):
         value = features[name]
 
         if not np.isfinite(value):
-            raise HTTPException(
-                status_code=422,
-                detail=f"Feature '{name}' must be finite."
-            )
+            raise HTTPException(status_code=422, detail=f"Feature '{name}' must be finite.")
 
         values.append(value)
 
@@ -114,13 +118,11 @@ def build_vector(features: dict[str, float]):
 # API
 # =========================
 
+
 @app.get("/")
 def root():
 
-    return {
-        "message": "Breast Cancer SVM API",
-        "version": metadata["model_version"]
-    }
+    return {"message": "Breast Cancer SVM API", "version": metadata["model_version"]}
 
 
 @app.get("/health")
@@ -129,7 +131,7 @@ def health():
     return {
         "status": "ok",
         "model_loaded": model is not None,
-        "model_version": metadata["model_version"]
+        "model_version": metadata["model_version"],
     }
 
 
@@ -159,8 +161,9 @@ def predict(request: PredictionRequest):
         "probability_malignant": probability_malignant,
         "probability_benign": probability_benign,
         "model_version": metadata["model_version"],
-        "warning": metadata["warning"]
+        "warning": metadata["warning"],
     }
+
 
 class BatchPredictionRequest(BaseModel):
     samples: list[dict[str, float]]
@@ -177,14 +180,16 @@ def predict_batch(request: BatchPredictionRequest):
     results = []
     for prediction, probability in zip(predictions, probabilities):
         cls = int(prediction)
-        results.append({
-            "predicted_class": cls,
-            "predicted_label": metadata["class_mapping"][str(cls)],
-            "probability_malignant": float(probability[0]),
-            "probability_benign": float(probability[1]),
-            "model_version": metadata["model_version"],
-            "warning": metadata["warning"]
-        })
+        results.append(
+            {
+                "predicted_class": cls,
+                "predicted_label": metadata["class_mapping"][str(cls)],
+                "probability_malignant": float(probability[0]),
+                "probability_benign": float(probability[1]),
+                "model_version": metadata["model_version"],
+                "warning": metadata["warning"],
+            }
+        )
     return {"total": len(results), "results": results}
 
 
@@ -193,9 +198,11 @@ def predict_batch(request: BatchPredictionRequest):
 from functools import lru_cache
 from time import perf_counter
 
-@app.get('/benchmark')
+
+@app.get("/benchmark")
 def svm_benchmark():
     return _benchmark_results()
+
 
 @lru_cache(maxsize=1)
 def _benchmark_results():
@@ -204,26 +211,67 @@ def _benchmark_results():
     from sklearn.preprocessing import StandardScaler
     from sklearn.pipeline import make_pipeline
     from sklearn.svm import SVC
-    from sklearn.metrics import accuracy_score, precision_score, recall_score, f1_score, confusion_matrix, roc_auc_score
-    dataset=load_breast_cancer()
-    x_train,x_test,y_train,y_test=train_test_split(dataset.data,dataset.target,test_size=0.2,random_state=42,stratify=dataset.target)
-    results=[]
-    for name,kernel in [('Linear','linear'),('RBF','rbf'),('Polynomial','poly'),('Sigmoid','sigmoid')]:
-        classifier=make_pipeline(StandardScaler(),SVC(kernel=kernel,degree=3,gamma='scale',probability=True,random_state=42))
-        t0=perf_counter();classifier.fit(x_train,y_train);training_ms=(perf_counter()-t0)*1000
-        t1=perf_counter();prediction=classifier.predict(x_test);predict_ms=(perf_counter()-t1)*1000
-        score=classifier.predict_proba(x_test)[:,1]
-        results.append({'kernel':name,'accuracy':round(float(accuracy_score(y_test,prediction)),4),
-            'precision':round(float(precision_score(y_test,prediction,average='macro',zero_division=0)),4),
-            'recall':round(float(recall_score(y_test,prediction,average='macro',zero_division=0)),4),
-            'f1':round(float(f1_score(y_test,prediction,average='macro',zero_division=0)),4),
-            'auc':round(float(roc_auc_score(y_test,score)),4),
-            'confusion_matrix':confusion_matrix(y_test,prediction).tolist(),
-            'training_ms':round(training_ms,2),'prediction_ms':round(predict_ms,2)})
-    return {'dataset':'Breast Cancer Wisconsin Diagnostic (sklearn)','total_samples':len(dataset.target),
-      'train_samples':len(y_train),'test_samples':len(y_test),'split':'80/20, stratify, random_state=42',
-      'metrics_average':'macro','positive_class':1,'results':results,
-      'note':'Thời gian đo trên máy chủ, thay đổi theo môi trường. Đây là benchmark riêng, không phải kết quả mô hình đã triển khai.'}
+    from sklearn.metrics import (
+        accuracy_score,
+        precision_score,
+        recall_score,
+        f1_score,
+        confusion_matrix,
+        roc_auc_score,
+    )
+
+    dataset = load_breast_cancer()
+    x_train, x_test, y_train, y_test = train_test_split(
+        dataset.data, dataset.target, test_size=0.2, random_state=42, stratify=dataset.target
+    )
+    results = []
+    for name, kernel in [
+        ("Linear", "linear"),
+        ("RBF", "rbf"),
+        ("Polynomial", "poly"),
+        ("Sigmoid", "sigmoid"),
+    ]:
+        classifier = make_pipeline(
+            StandardScaler(),
+            SVC(kernel=kernel, degree=3, gamma="scale", probability=True, random_state=42),
+        )
+        t0 = perf_counter()
+        classifier.fit(x_train, y_train)
+        training_ms = (perf_counter() - t0) * 1000
+        t1 = perf_counter()
+        prediction = classifier.predict(x_test)
+        predict_ms = (perf_counter() - t1) * 1000
+        score = classifier.predict_proba(x_test)[:, 1]
+        results.append(
+            {
+                "kernel": name,
+                "accuracy": round(float(accuracy_score(y_test, prediction)), 4),
+                "precision": round(
+                    float(precision_score(y_test, prediction, average="macro", zero_division=0)), 4
+                ),
+                "recall": round(
+                    float(recall_score(y_test, prediction, average="macro", zero_division=0)), 4
+                ),
+                "f1": round(
+                    float(f1_score(y_test, prediction, average="macro", zero_division=0)), 4
+                ),
+                "auc": round(float(roc_auc_score(y_test, score)), 4),
+                "confusion_matrix": confusion_matrix(y_test, prediction).tolist(),
+                "training_ms": round(training_ms, 2),
+                "prediction_ms": round(predict_ms, 2),
+            }
+        )
+    return {
+        "dataset": "Breast Cancer Wisconsin Diagnostic (sklearn)",
+        "total_samples": len(dataset.target),
+        "train_samples": len(y_train),
+        "test_samples": len(y_test),
+        "split": "80/20, stratify, random_state=42",
+        "metrics_average": "macro",
+        "positive_class": 1,
+        "results": results,
+        "note": "Thời gian đo trên máy chủ, thay đổi theo môi trường. Đây là benchmark riêng, không phải kết quả mô hình đã triển khai.",
+    }
 
 
 # Các mô hình đối chiếu huấn luyện trên WDBC, cùng phép chia cố định.
@@ -235,14 +283,29 @@ def _comparison_models():
     from sklearn.preprocessing import StandardScaler
     from sklearn.pipeline import make_pipeline
     from sklearn.svm import SVC
-    dataset=load_breast_cancer()
-    x_train,_,y_train,_=train_test_split(dataset.data,dataset.target,test_size=.2,random_state=42,stratify=dataset.target)
-    return {name:make_pipeline(StandardScaler(),SVC(kernel=kernel,degree=3,gamma='scale',probability=True,random_state=42)).fit(x_train,y_train)
-            for name,kernel in [('Linear','linear'),('RBF','rbf'),('Polynomial','poly'),('Sigmoid','sigmoid')]}
+
+    dataset = load_breast_cancer()
+    x_train, _, y_train, _ = train_test_split(
+        dataset.data, dataset.target, test_size=0.2, random_state=42, stratify=dataset.target
+    )
+    return {
+        name: make_pipeline(
+            StandardScaler(),
+            SVC(kernel=kernel, degree=3, gamma="scale", probability=True, random_state=42),
+        ).fit(x_train, y_train)
+        for name, kernel in [
+            ("Linear", "linear"),
+            ("RBF", "rbf"),
+            ("Polynomial", "poly"),
+            ("Sigmoid", "sigmoid"),
+        ]
+    }
+
 
 class CompareRequest(BaseModel):
-    features: dict[str,float]
+    features: dict[str, float]
     kernels: list[str]
+
 
 class CompareBatchRequest(BaseModel):
     samples: list[dict[str, float]] = Field(min_length=1, max_length=MAX_BATCH_SAMPLES)
@@ -251,58 +314,98 @@ class CompareBatchRequest(BaseModel):
 
 
 def validate_batch_labels(labels, sample_count):
-    if labels is not None and (len(labels) != sample_count or any(label not in (0, 1) for label in labels)):
-        raise HTTPException(422, 'Cần một nhãn 0 hoặc 1 cho mỗi mẫu trong file.')
+    if labels is not None and (
+        len(labels) != sample_count or any(label not in (0, 1) for label in labels)
+    ):
+        raise HTTPException(422, "Cần một nhãn 0 hoặc 1 cho mỗi mẫu trong file.")
+
 
 def _validate_kernels(kernels):
-    if not kernels or len(kernels)>4 or len(set(kernels))!=len(kernels) or any(k not in ('Linear','RBF','Polynomial','Sigmoid') for k in kernels):
-        raise HTTPException(status_code=422,detail='Chọn 1–4 kernel hợp lệ, không trùng lặp.')
+    if (
+        not kernels
+        or len(kernels) > 4
+        or len(set(kernels)) != len(kernels)
+        or any(k not in ("Linear", "RBF", "Polynomial", "Sigmoid") for k in kernels)
+    ):
+        raise HTTPException(status_code=422, detail="Chọn 1–4 kernel hợp lệ, không trùng lặp.")
 
-def _compare_matrix(X,kernels):
+
+def _compare_matrix(X, kernels):
     _validate_kernels(kernels)
     # sklearn WDBC trật tự đặc trưng khớp metadata của dự án.
-    if X.shape[1]!=30:
-        raise HTTPException(status_code=422,detail='Cần đúng 30 đặc trưng.')
-    models=_comparison_models()
-    results=[]
+    if X.shape[1] != 30:
+        raise HTTPException(status_code=422, detail="Cần đúng 30 đặc trưng.")
+    models = _comparison_models()
+    results = []
     for name in kernels:
-        t0=perf_counter()
-        predicted=models[name].predict(X)
-        probabilities=models[name].predict_proba(X)
-        elapsed=(perf_counter()-t0)*1000
-        results.append({'kernel':name,'elapsed_ms':round(elapsed,3),
-            'predictions':[{'predicted_class':int(c),'predicted_label':metadata['class_mapping'][str(int(c))],
-                'probability_malignant':float(p[0]),'probability_benign':float(p[1])} for c,p in zip(predicted,probabilities)]})
-    return {'total':len(X),'results':results,'note':'Các kernel được huấn luyện độc lập trên tập WDBC train 80%. Thời gian chỉ tính suy luận trên máy chủ.'}
+        t0 = perf_counter()
+        predicted = models[name].predict(X)
+        probabilities = models[name].predict_proba(X)
+        elapsed = (perf_counter() - t0) * 1000
+        results.append(
+            {
+                "kernel": name,
+                "elapsed_ms": round(elapsed, 3),
+                "predictions": [
+                    {
+                        "predicted_class": int(c),
+                        "predicted_label": metadata["class_mapping"][str(int(c))],
+                        "probability_malignant": float(p[0]),
+                        "probability_benign": float(p[1]),
+                    }
+                    for c, p in zip(predicted, probabilities)
+                ],
+            }
+        )
+    return {
+        "total": len(X),
+        "results": results,
+        "note": "Các kernel được huấn luyện độc lập trên tập WDBC train 80%. Thời gian chỉ tính suy luận trên máy chủ.",
+    }
 
-@app.post('/predict/compare')
-def predict_compare(req:CompareRequest):
-    return _compare_matrix(build_vector(req.features),req.kernels)
 
-@app.post('/predict/batch/compare')
-def predict_batch_compare(req:CompareBatchRequest):
+@app.post("/predict/compare")
+def predict_compare(req: CompareRequest):
+    return _compare_matrix(build_vector(req.features), req.kernels)
+
+
+@app.post("/predict/batch/compare")
+def predict_batch_compare(req: CompareBatchRequest):
     validate_batch_labels(req.labels, len(req.samples))
-    result = _compare_matrix(np.vstack([build_vector(sample) for sample in req.samples]), req.kernels)
+    result = _compare_matrix(
+        np.vstack([build_vector(sample) for sample in req.samples]), req.kernels
+    )
     if req.labels is not None:
-        for run in result['results']:
-            correct = sum(row['predicted_class'] == label for row, label in zip(run['predictions'], req.labels))
-            run['evaluation'] = {'correct': correct, 'incorrect': len(req.labels) - correct,
-                                 'accuracy': correct / len(req.labels)}
+        for run in result["results"]:
+            correct = sum(
+                row["predicted_class"] == label
+                for row, label in zip(run["predictions"], req.labels)
+            )
+            run["evaluation"] = {
+                "correct": correct,
+                "incorrect": len(req.labels) - correct,
+                "accuracy": correct / len(req.labels),
+            }
     return result
 
-@app.get('/admin/overview')
+
+@app.get("/admin/overview")
 def admin_overview(user=Depends(identity)):
     require_admin(user)
-    return {'admin_email':user['email'],'model_version':metadata['model_version'],
-        'model_count':4,'benchmark':_benchmark_results(),
-        'note':'Số người dùng và lịch sử toàn hệ thống cần bảng Supabase và API thống kê riêng có RLS; không sử dụng số liệu giả.'}
+    return {
+        "admin_email": user["email"],
+        "model_version": metadata["model_version"],
+        "model_count": 4,
+        "benchmark": _benchmark_results(),
+        "note": "Số người dùng và lịch sử toàn hệ thống cần bảng Supabase và API thống kê riêng có RLS; không sử dụng số liệu giả.",
+    }
 
 
 class HistorySession(BaseModel):
     id: str = Field(min_length=1, max_length=100)
     type: str
     analyzedAt: str
-    filename: str = Field(default='', max_length=255)
+    filename: str = Field(default="", max_length=255)
     sampleCount: int = Field(ge=1, le=MAX_BATCH_SAMPLES)
     kernels: list[str]
     summary: list[dict] | dict = Field(default_factory=list)
@@ -311,145 +414,153 @@ class HistorySession(BaseModel):
     labels: list[StrictInt] | None = Field(default=None, max_length=MAX_BATCH_SAMPLES)
 
 
-@app.post('/history/sessions', dependencies=[Depends(require_browser_origin)])
+@app.post("/history/sessions", dependencies=[Depends(require_browser_origin)])
 def create_session(
     session: HistorySession,
     user=Depends(identity),
 ):
 
-    if session.type not in ('single', 'batch'):
-        raise HTTPException(
-            status_code=422,
-            detail='Loại phân tích không hợp lệ.'
-        )
+    if session.type not in ("single", "batch"):
+        raise HTTPException(status_code=422, detail="Loại phân tích không hợp lệ.")
 
     _validate_kernels(session.kernels)
 
-    if session.type == 'single':
+    if session.type == "single":
         if session.sampleCount != 1:
-            raise HTTPException(
-                status_code=422,
-                detail='Phân tích 1 mẫu phải có sampleCount = 1.'
-            )
+            raise HTTPException(status_code=422, detail="Phân tích 1 mẫu phải có sampleCount = 1.")
         if not isinstance(session.summary, dict) or not isinstance(session.results, dict):
-            raise HTTPException(
-                status_code=422,
-                detail='Dữ liệu phân tích 1 mẫu không hợp lệ.'
-            )
+            raise HTTPException(status_code=422, detail="Dữ liệu phân tích 1 mẫu không hợp lệ.")
     else:
         if not isinstance(session.summary, list) or not isinstance(session.results, list):
-            raise HTTPException(
-                status_code=422,
-                detail='Dữ liệu phân tích Batch không hợp lệ.'
-            )
+            raise HTTPException(status_code=422, detail="Dữ liệu phân tích Batch không hợp lệ.")
         if len(session.results) != len(session.kernels) or any(
-            not isinstance(r.get('predictions'), list)
-            or len(r.get('predictions', [])) != session.sampleCount
+            not isinstance(r.get("predictions"), list)
+            or len(r.get("predictions", [])) != session.sampleCount
             for r in session.results
         ):
-            raise HTTPException(
-                status_code=422,
-                detail='Số mẫu/kernel không khớp.'
-            )
+            raise HTTPException(status_code=422, detail="Số mẫu/kernel không khớp.")
 
         validate_batch_labels(session.labels, session.sampleCount)
         if session.samples is not None:
             if len(session.samples) != session.sampleCount:
-                raise HTTPException(422, 'Số dòng đặc trưng đã lưu không khớp với số mẫu.')
+                raise HTTPException(422, "Số dòng đặc trưng đã lưu không khớp với số mẫu.")
             for sample in session.samples:
                 build_vector(sample)
 
-    details = {'results': session.results, 'analyzedAt': session.analyzedAt}
+    details = {"results": session.results, "analyzedAt": session.analyzedAt}
     if session.samples is not None:
-        details['samples'] = session.samples
+        details["samples"] = session.samples
     if session.labels is not None:
-        details['labels'] = session.labels
+        details["labels"] = session.labels
 
     try:
         with database() as db:
             if session.sampleCount > 200:
-                db.execute(HISTORY_BATCH_MIGRATION.read_text(encoding='utf-8'))
-            db.execute('''
+                db.execute(HISTORY_BATCH_MIGRATION.read_text(encoding="utf-8"))
+            db.execute(
+                """
                 insert into public.bc_analysis_sessions
                     (id, user_id, user_email, kind, filename, sample_count, kernels, summary, details)
                 values (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-            ''', (session.id, user['sub'], user['email'], session.type, session.filename,
-                  session.sampleCount, session.kernels, Jsonb(session.summary),
-                  Jsonb(details)))
+            """,
+                (
+                    session.id,
+                    user["sub"],
+                    user["email"],
+                    session.type,
+                    session.filename,
+                    session.sampleCount,
+                    session.kernels,
+                    Jsonb(session.summary),
+                    Jsonb(details),
+                ),
+            )
     except UniqueViolation as exc:
-        raise HTTPException(409, 'ID phiên phân tích đã tồn tại.') from exc
+        raise HTTPException(409, "ID phiên phân tích đã tồn tại.") from exc
     except CheckViolation as exc:
-        raise HTTPException(503, 'Cơ sở dữ liệu chưa áp dụng giới hạn lưu 600 mẫu.') from exc
+        raise HTTPException(503, "Cơ sở dữ liệu chưa áp dụng giới hạn lưu 600 mẫu.") from exc
 
-    return {'saved': True, 'id': session.id}
+    return {"saved": True, "id": session.id}
 
-@app.get('/history/sessions')
+
+@app.get("/history/sessions")
 def list_sessions(summary_only: bool = False, user=Depends(identity)):
     with database() as db:
-        sessions = db.execute('''
+        sessions = db.execute(
+            """
             select id, kind, created_at, filename, sample_count, kernels, summary,
                    case when %s and kind = 'batch'
                         then jsonb_build_object('analyzedAt', details -> 'analyzedAt', 'summaryOnly', true)
                         else details end as details
             from public.bc_analysis_sessions where user_id = %s
             order by created_at desc limit 200
-        ''', (summary_only, user['sub'])).fetchall()
-    return {'sessions': sessions}
+        """,
+            (summary_only, user["sub"]),
+        ).fetchall()
+    return {"sessions": sessions}
 
 
-@app.get('/history/sessions/{session_id}')
+@app.get("/history/sessions/{session_id}")
 def get_history_session(session_id: str, user=Depends(identity)):
     with database() as db:
-        session = db.execute('''
+        session = db.execute(
+            """
             select id, kind, created_at, filename, sample_count, kernels, summary, details
             from public.bc_analysis_sessions where id = %s and user_id = %s
-        ''', (session_id, user['sub'])).fetchone()
+        """,
+            (session_id, user["sub"]),
+        ).fetchone()
     if session is None:
-        raise HTTPException(404, 'Không tìm thấy phiên phân tích.')
+        raise HTTPException(404, "Không tìm thấy phiên phân tích.")
     return session
 
 
-@app.delete('/history/sessions/{session_id}', dependencies=[Depends(require_browser_origin)])
+@app.delete("/history/sessions/{session_id}", dependencies=[Depends(require_browser_origin)])
 def delete_session(
     session_id: str,
     user=Depends(identity),
 ):
 
     if not session_id or len(session_id) > 100:
-        raise HTTPException(
-            status_code=400,
-            detail='ID phiên phân tích không hợp lệ.'
-        )
+        raise HTTPException(status_code=400, detail="ID phiên phân tích không hợp lệ.")
 
     with database() as db:
-        db.execute('delete from public.bc_analysis_sessions where id = %s and user_id = %s',
-                   (session_id, user['sub']))
+        db.execute(
+            "delete from public.bc_analysis_sessions where id = %s and user_id = %s",
+            (session_id, user["sub"]),
+        )
 
-    return {
-        'deleted': True,
-        'id': session_id
-    }
+    return {"deleted": True, "id": session_id}
 
-@app.get('/admin/statistics')
+
+@app.get("/admin/statistics")
 def admin_statistics(user=Depends(identity)):
     require_admin(user)
     with database() as db:
-        sessions = db.execute('''
+        sessions = db.execute("""
             select user_id, sample_count, kernels from public.bc_analysis_sessions
             order by created_at desc limit 10000
-        ''').fetchall()
-    counts={k:0 for k in ['Linear','RBF','Polynomial','Sigmoid']}
+        """).fetchall()
+    counts = {k: 0 for k in ["Linear", "RBF", "Polynomial", "Sigmoid"]}
     for sess in sessions:
-        for k in sess.get('kernels',[]):
-            if k in counts:counts[k]+=1
-    return {'total_users_with_sessions':len(set(s['user_id'] for s in sessions)),'total_sessions':len(sessions),'total_samples':sum(s['sample_count'] for s in sessions),'kernel_usage':counts,'note':'Thống kê phiên đã lưu trong bc_analysis_sessions; không phải tổng người dùng đăng ký.'}
+        for k in sess.get("kernels", []):
+            if k in counts:
+                counts[k] += 1
+    return {
+        "total_users_with_sessions": len(set(s["user_id"] for s in sessions)),
+        "total_sessions": len(sessions),
+        "total_samples": sum(s["sample_count"] for s in sessions),
+        "kernel_usage": counts,
+        "note": "Thống kê phiên đã lưu trong bc_analysis_sessions; không phải tổng người dùng đăng ký.",
+    }
 
 
 @app.exception_handler(RequestValidationError)
 async def handle_request_validation(request: Request, exc: RequestValidationError):
-    if request.url.path.startswith('/account/'):
-        return JSONResponse({'detail': 'Thông tin nhập không hợp lệ.'}, status_code=422)
+    if request.url.path.startswith("/account/"):
+        return JSONResponse({"detail": "Thông tin nhập không hợp lệ."}, status_code=422)
     return await request_validation_exception_handler(request, exc)
 
 
 app.include_router(account_router)
+app.include_router(admin_activity_router)

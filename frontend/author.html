@@ -1,14 +1,140 @@
-<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Tác giả & Hướng dẫn | Breast-Cancer SVM</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="modern.css">
-<link rel="stylesheet" href="studio.css"><link rel="stylesheet" href="compact.css"><link rel="stylesheet" href="upgrade.css"></head><body><div class="app-container"><aside class="sidebar"><div class="brand"><div class="brand-icon">✚</div><div><h2>Breast-Cancer</h2><span>Medical AI · Research</span></div></div><div class="menu-label">KHÔNG GIAN LÀM VIỆC</div><nav class="sidebar-menu">
-<a href="index.html" class="menu-item">◫ &nbsp; Tổng quan</a>
-<a href="analysis.html" class="menu-item">⌕ &nbsp; Phân tích một mẫu</a>
-<a href="batch.html" class="menu-item">▦ &nbsp; Phân tích file</a>
-<a href="history.html" class="menu-item">▤ &nbsp; Lịch sử phân tích</a>
-<a href="statistics.html" class="menu-item">◴ &nbsp; Thống kê cá nhân</a>
-<div class="menu-label">THÔNG TIN</div>
-<a href="compare.html" class="menu-item">▥ &nbsp; So sánh 4 kernel SVM</a>
-<a href="admin.html" class="menu-item" id="adminNavLink" hidden>♛ &nbsp; Quản trị hệ thống</a>
-<a href="model.html" class="menu-item">◇ &nbsp; Mô hình SVM</a>
-<a href="profile.html" class="menu-item">♙ &nbsp; Tài khoản của tôi</a>
-<a href="author.html" class="menu-item">✧ &nbsp; Tác giả & Hướng dẫn</a>
-</nav><div class="sidebar-bottom"><div class="user-profile"><div class="avatar">ID</div><div class="user-info"><strong id="ssoUserName">Người dùng</strong><span id="ssoUserEmail">BreastCare</span></div></div><button class="sidebar-logout" id="ssoLogoutBtn">Đăng xuất</button></div></aside><main class="main-content"><header class="topbar"><div><span class="breadcrumb">Breast-Cancer / Tác giả & Hướng dẫn</span><h2>Tác giả & Hướng dẫn</h2></div><div class="topbar-right"><span class="status">● Nền tảng nghiên cứu</span></div></header><section class="dashboard"><div class="hero-new"><div><div class="eyebrow">VỀ DỰ ÁN</div><h1>Con người phía sau Breast-Cancer</h1><p>Nền tảng minh họa ứng dụng học máy trong phân loại dữ liệu ung thư vú, hướng đến trải nghiệm rõ ràng, dễ tiếp cận.</p></div></div><div class="author-card"><img src="admin_avatar.jpg" alt="Ảnh chân dung tác giả" class="author-photo"><div><span class="eyebrow">TÁC GIẢ · QUẢN TRỊ VIÊN</span><h2>Lê Thanh Thảo</h2><p>Phát triển và trình bày dự án Breast-Cancer SVM.<br><a href="mailto:lethao8130@gmail.com">lethao8130@gmail.com</a><br><a href="https://github.com/Le-Thanh-Thao-2106" target="_blank" rel="noopener">github.com/Le-Thanh-Thao-2106</a></p><div class="pill-line"><span>Machine Learning</span><span>Support Vector Machine</span><span>FastAPI</span><span>Phiên đăng nhập</span></div></div></div><div class="content-card"><h3>Hướng dẫn sử dụng</h3><ol class="guide-list"><li>Đăng nhập bằng tài khoản BreastCare.</li><li>Chọn <b>Phân tích một mẫu</b> để nhập 30 đặc trưng hoặc tải mẫu thử.</li><li>Chọn <b>Phân tích file</b> để tải lên nhiều mẫu có cùng cấu trúc dữ liệu.</li><li>Xem kết quả, lịch sử và thống kê theo tài khoản đang đăng nhập.</li></ol></div><div class="notice"><span>ⓘ</span><div><strong>Lưu ý y khoa</strong><p>Kết quả của mô hình chỉ phục vụ học tập và nghiên cứu, không thay thế kết luận của bác sĩ.</p></div></div></section></main></div><p id="ssoMessage"></p><script src="auth.js"></script><script src="user-storage.js"></script><script src="navigation.js"></script><script src="theme.js"></script></body></html>
+<!doctype html>
+<html lang="vi">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Tác giả & Hướng dẫn | BreastCare SVM</title>
+        <link rel="stylesheet" href="style.css" />
+        <link rel="stylesheet" href="modern.css" />
+        <link rel="stylesheet" href="studio.css" />
+        <link rel="stylesheet" href="compact.css" />
+        <link rel="stylesheet" href="upgrade.css" />
+        <link rel="stylesheet" href="workspace-layout.css?v=workspace-1" />
+    </head>
+    <body class="workspace">
+        <div class="app-container">
+            <aside class="sidebar">
+                <div class="brand">
+                    <div class="brand-icon">✚</div>
+                    <div>
+                        <h2>Breast-Cancer</h2>
+                        <span>Medical AI · Research</span>
+                    </div>
+                </div>
+                <div class="menu-label">KHÔNG GIAN LÀM VIỆC</div>
+                <nav class="sidebar-menu">
+                    <a href="index.html" class="menu-item">◫ &nbsp; Tổng quan</a>
+                    <a href="analysis.html" class="menu-item">⌕ &nbsp; Phân tích một mẫu</a>
+                    <a href="batch.html" class="menu-item">▦ &nbsp; Phân tích file</a>
+                    <a href="history.html" class="menu-item">▤ &nbsp; Lịch sử phân tích</a>
+                    <a href="statistics.html" class="menu-item">◴ &nbsp; Thống kê cá nhân</a>
+                    <div class="menu-label">THÔNG TIN</div>
+                    <a href="compare.html" class="menu-item">▥ &nbsp; So sánh 4 kernel SVM</a>
+                    <a href="admin.html" class="menu-item" id="adminNavLink" hidden
+                        >♛ &nbsp; Quản trị hệ thống</a
+                    >
+                    <a href="model.html" class="menu-item">◇ &nbsp; Mô hình SVM</a>
+                    <a href="profile.html" class="menu-item">♙ &nbsp; Tài khoản của tôi</a>
+                    <a href="author.html" class="menu-item">✧ &nbsp; Tác giả & Hướng dẫn</a>
+                </nav>
+                <div class="sidebar-bottom">
+                    <div class="user-profile">
+                        <div class="avatar">ID</div>
+                        <div class="user-info">
+                            <strong id="ssoUserName">Người dùng</strong
+                            ><span id="ssoUserEmail">BreastCare</span>
+                        </div>
+                    </div>
+                    <button class="sidebar-logout" id="ssoLogoutBtn">Đăng xuất</button>
+                </div>
+            </aside>
+            <main class="main-content">
+                <section class="dashboard">
+                    <header class="workspace-heading">
+                        <h1>Tác giả & Hướng dẫn</h1>
+                    </header>
+
+                    <div class="workspace-blocks">
+                        <div class="workspace-panel-grid">
+                            <section class="content-card workspace-author">
+                                <img
+                                    src="admin_avatar.jpg"
+                                    alt="Ảnh chân dung Lê Thanh Thảo"
+                                    width="180"
+                                    height="240"
+                                />
+                                <div>
+                                    <h2>Lê Thanh Thảo</h2>
+                                    <p class="workspace-note">Tác giả · Quản trị viên</p>
+                                    <p>Phát triển dự án BreastCare SVM.</p>
+                                    <a class="workspace-contact" href="mailto:lethao8130@gmail.com">
+                                        <strong>Gmail</strong><span>lethao8130@gmail.com</span
+                                        ><span aria-hidden="true">→</span>
+                                    </a>
+                                    <a
+                                        class="workspace-contact"
+                                        href="https://github.com/Le-Thanh-Thao-2106"
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                    >
+                                        <strong>GitHub</strong><span>Le-Thanh-Thao-2106</span
+                                        ><span aria-hidden="true">↗</span>
+                                    </a>
+                                </div>
+                            </section>
+                            <section class="content-card">
+                                <h2 class="workspace-card-title">
+                                    <span class="workspace-icon" aria-hidden="true">▤</span>Hướng
+                                    dẫn sử dụng
+                                </h2>
+                                <ol class="workspace-guide">
+                                    <li>
+                                        Vào
+                                        <a href="analysis.html"
+                                            ><strong>Phân tích một mẫu</strong></a
+                                        >
+                                        để điền 30 đặc trưng hoặc chọn mẫu thử.
+                                    </li>
+                                    <li>
+                                        Vào
+                                        <a href="batch.html"><strong>Phân tích file</strong></a> để
+                                        tải lên tối đa 600 mẫu.
+                                    </li>
+                                    <li>
+                                        Vào
+                                        <a href="history.html"
+                                            ><strong>Lịch sử phân tích</strong></a
+                                        >
+                                        để xem lại kết quả đã lưu.
+                                    </li>
+                                    <li>
+                                        Xem <a href="model.html"><strong>Mô hình SVM</strong></a> và
+                                        <a href="compare.html"><strong>So sánh kernel</strong></a>
+                                        để hiểu mô hình.
+                                    </li>
+                                </ol>
+                            </section>
+                        </div>
+
+                        <div class="notice">
+                            <span aria-hidden="true">ⓘ</span>
+                            <div>
+                                <strong>Lưu ý y khoa</strong>
+                                <p>
+                                    Kết quả của mô hình phục vụ học tập và nghiên cứu, không thay
+                                    thế kết luận của bác sĩ.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p id="ssoMessage" role="status"></p>
+                </section>
+            </main>
+        </div>
+        <script src="auth.js?v=workspace-1"></script>
+        <script src="user-storage.js"></script>
+        <script src="navigation.js?v=workspace-1"></script>
+        <script src="theme.js"></script>
+    </body>
+</html>

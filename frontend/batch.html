@@ -1,62 +1,146 @@
-<!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Phân tích file | Breast-Cancer SVM</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="modern.css">
-<link rel="stylesheet" href="studio.css"><link rel="stylesheet" href="compact.css"><link rel="stylesheet" href="upgrade.css"><link rel="stylesheet" href="research-layout.css?v=label-errors"></head><body class="bc-research-page bc-page-batch"><div class="app-container"><aside class="sidebar"><div class="brand"><div class="brand-icon">✚</div><div><h2>Breast-Cancer</h2><span>Medical AI · Research</span></div></div><div class="menu-label">KHÔNG GIAN LÀM VIỆC</div><nav class="sidebar-menu">
-<a href="index.html" class="menu-item">◫ &nbsp; Tổng quan</a>
-<a href="analysis.html" class="menu-item">⌕ &nbsp; Phân tích một mẫu</a>
-<a href="batch.html" class="menu-item">▦ &nbsp; Phân tích file</a>
-<a href="history.html" class="menu-item">▤ &nbsp; Lịch sử phân tích</a>
-<a href="statistics.html" class="menu-item">◴ &nbsp; Thống kê cá nhân</a>
-<div class="menu-label">THÔNG TIN</div>
-<a href="compare.html" class="menu-item">▥ &nbsp; So sánh 4 kernel SVM</a>
-<a href="admin.html" class="menu-item" id="adminNavLink" hidden>♛ &nbsp; Quản trị hệ thống</a>
-<a href="model.html" class="menu-item">◇ &nbsp; Mô hình SVM</a>
-<a href="profile.html" class="menu-item">♙ &nbsp; Tài khoản của tôi</a>
-<a href="author.html" class="menu-item">✧ &nbsp; Tác giả & Hướng dẫn</a>
-</nav><div class="sidebar-bottom"><div class="user-profile"><div class="avatar">ID</div><div class="user-info"><strong id="ssoUserName">Người dùng</strong><span id="ssoUserEmail">BreastCare</span></div></div><button class="sidebar-logout" id="ssoLogoutBtn">Đăng xuất</button></div></aside><main class="main-content"><header class="topbar"><div><span class="breadcrumb">Breast-Cancer / Phân tích file</span><h2>Phân tích file</h2></div><div class="topbar-right"><span class="status">● Nền tảng nghiên cứu</span></div></header><section class="dashboard">
-    <header class="research-hero"><h1>Phân tích file</h1></header>
-    <section class="content-card research-upload">
-        <div class="research-tabs" role="group" aria-label="Loại dữ liệu">
-            <button type="button" id="unlabeledMode" aria-pressed="true">Không có nhãn</button>
-            <button type="button" id="labeledMode" aria-pressed="false">Đã có nhãn</button>
+<!doctype html>
+<html lang="vi">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width,initial-scale=1" />
+        <title>Phân tích file | Breast-Cancer SVM</title>
+        <link rel="stylesheet" href="style.css" />
+        <link rel="stylesheet" href="modern.css" />
+        <link rel="stylesheet" href="studio.css" />
+        <link rel="stylesheet" href="compact.css" />
+        <link rel="stylesheet" href="upgrade.css" />
+        <link rel="stylesheet" href="research-layout.css?v=label-errors" />
+        <link rel="stylesheet" href="workspace-layout.css?v=workspace-1" />
+    </head>
+    <body class="bc-research-page bc-page-batch workspace">
+        <div class="app-container">
+            <aside class="sidebar">
+                <div class="brand">
+                    <div class="brand-icon">✚</div>
+                    <div>
+                        <h2>Breast-Cancer</h2>
+                        <span>Medical AI · Research</span>
+                    </div>
+                </div>
+                <div class="menu-label">KHÔNG GIAN LÀM VIỆC</div>
+                <nav class="sidebar-menu">
+                    <a href="index.html" class="menu-item">◫ &nbsp; Tổng quan</a>
+                    <a href="analysis.html" class="menu-item">⌕ &nbsp; Phân tích một mẫu</a>
+                    <a href="batch.html" class="menu-item">▦ &nbsp; Phân tích file</a>
+                    <a href="history.html" class="menu-item">▤ &nbsp; Lịch sử phân tích</a>
+                    <a href="statistics.html" class="menu-item">◴ &nbsp; Thống kê cá nhân</a>
+                    <div class="menu-label">THÔNG TIN</div>
+                    <a href="compare.html" class="menu-item">▥ &nbsp; So sánh 4 kernel SVM</a>
+                    <a href="admin.html" class="menu-item" id="adminNavLink" hidden
+                        >♛ &nbsp; Quản trị hệ thống</a
+                    >
+                    <a href="model.html" class="menu-item">◇ &nbsp; Mô hình SVM</a>
+                    <a href="profile.html" class="menu-item">♙ &nbsp; Tài khoản của tôi</a>
+                    <a href="author.html" class="menu-item">✧ &nbsp; Tác giả & Hướng dẫn</a>
+                </nav>
+                <div class="sidebar-bottom">
+                    <div class="user-profile">
+                        <div class="avatar">ID</div>
+                        <div class="user-info">
+                            <strong id="ssoUserName">Người dùng</strong
+                            ><span id="ssoUserEmail">BreastCare</span>
+                        </div>
+                    </div>
+                    <button class="sidebar-logout" id="ssoLogoutBtn">Đăng xuất</button>
+                </div>
+            </aside>
+            <main class="main-content">
+                <header class="topbar">
+                    <div>
+                        <span class="breadcrumb">Breast-Cancer / Phân tích file</span>
+                        <h2>Phân tích file</h2>
+                    </div>
+                    <div class="topbar-right">
+                        <span class="status">● Nền tảng nghiên cứu</span>
+                    </div>
+                </header>
+                <section class="dashboard">
+                    <header class="research-hero">
+                        <h1>Phân tích file</h1>
+                        <p>Tải file dữ liệu để phân tích tối đa 600 mẫu trong một lần.</p>
+                    </header>
+                    <section class="content-card research-upload">
+                        <div class="research-tabs" role="group" aria-label="Loại dữ liệu">
+                            <button type="button" id="unlabeledMode" aria-pressed="true">
+                                Không có nhãn
+                            </button>
+                            <button type="button" id="labeledMode" aria-pressed="false">
+                                Đã có nhãn
+                            </button>
+                        </div>
+                        <div class="research-upload-actions">
+                            <label class="research-file">
+                                <span id="batchFileName">Chọn file</span>
+                                <input type="file" id="csvFile" accept=".csv,.txt,.xlsx,.xls" />
+                            </label>
+                            <div class="research-format">
+                                <strong>CSV · TXT · XLSX · XLS</strong><small>Tối đa 600 mẫu</small>
+                            </div>
+                            <button type="button" class="primary-button" id="runBatch" disabled>
+                                Phân tích file
+                            </button>
+                        </div>
+                        <div class="research-upload-tools">
+                            <div class="kernel-options" id="batchKernelOptions" aria-label="Kernel">
+                                <label><input type="checkbox" value="Linear" /> Linear</label>
+                                <label><input type="checkbox" value="RBF" checked /> RBF</label>
+                                <label
+                                    ><input type="checkbox" value="Polynomial" /> Polynomial</label
+                                >
+                                <label><input type="checkbox" value="Sigmoid" /> Sigmoid</label>
+                            </div>
+                            <a
+                                class="secondary-button"
+                                id="downloadTemplate"
+                                href="breast-cancer-mau-20-dong.csv"
+                                download
+                                >Tải file mẫu</a
+                            >
+                        </div>
+                        <p id="batchModeHelp">File cần đủ 30 cột đặc trưng WDBC.</p>
+                        <p id="batchMessage" role="status">Chưa chọn file.</p>
+                    </section>
+                    <section id="batchResults" hidden aria-label="Kết quả phân tích">
+                        <div id="batchMetrics" class="research-metrics"></div>
+                        <section class="content-card research-results">
+                            <div id="batchPreview"></div>
+                            <button type="button" class="secondary-button" id="exportBatch">
+                                Xuất kết quả CSV
+                            </button>
+                        </section>
+                        <section
+                            class="content-card research-comparison"
+                            id="batchComparison"
+                            hidden
+                        ></section>
+                    </section>
+                    <div class="notice">
+                        <span>ⓘ</span>
+                        <div>
+                            <strong>Lưu ý y khoa</strong>
+                            <p>
+                                Kết quả phục vụ học tập và nghiên cứu, không thay thế kết luận của
+                                bác sĩ.
+                            </p>
+                        </div>
+                    </div>
+                </section>
+            </main>
         </div>
-        <div class="research-upload-actions">
-            <label class="research-file">
-                <span id="batchFileName">Chọn file</span>
-                <input type="file" id="csvFile" accept=".csv,.txt,.xlsx,.xls">
-            </label>
-            <div class="research-format"><strong>CSV · TXT · XLSX · XLS</strong><small>Tối đa 600 mẫu</small></div>
-            <button type="button" class="primary-button" id="runBatch" disabled>Phân tích file</button>
-        </div>
-        <div class="research-upload-tools">
-            <div class="kernel-options" id="batchKernelOptions" aria-label="Kernel">
-                <label><input type="checkbox" value="Linear"> Linear</label>
-                <label><input type="checkbox" value="RBF" checked> RBF</label>
-                <label><input type="checkbox" value="Polynomial"> Polynomial</label>
-                <label><input type="checkbox" value="Sigmoid"> Sigmoid</label>
-            </div>
-            <a class="secondary-button" id="downloadTemplate" href="breast-cancer-mau-20-dong.csv" download>Tải file mẫu</a>
-        </div>
-        <p id="batchModeHelp">File cần đủ 30 cột đặc trưng WDBC.</p>
-        <p id="batchMessage" role="status">Chưa chọn file.</p>
-    </section>
-    <section id="batchResults" hidden aria-label="Kết quả phân tích">
-        <div id="batchMetrics" class="research-metrics"></div>
-        <section class="content-card research-results">
-            <div id="batchPreview"></div>
-            <button type="button" class="secondary-button" id="exportBatch">Xuất kết quả CSV</button>
-        </section>
-        <section class="content-card research-comparison" id="batchComparison" hidden></section>
-    </section>
-    <div class="notice"><span>ⓘ</span><div><strong>Lưu ý y khoa</strong><p>Kết quả phục vụ học tập và nghiên cứu, không thay thế kết luận của bác sĩ.</p></div></div>
-</section>
-</main></div>
-<p id="ssoMessage"></p>
-<script src="auth.js"></script>
-<script src="user-storage.js"></script>
-<script src="features-vi.js"></script>
-<script src="cloud-history.js?v=batch-600"></script>
-<script src="navigation.js"></script>
-<script src="theme.js"></script>
-<script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-<script src="batch-results.js?v=prediction-filters"></script>
-<script src="batch.js?v=label-errors"></script>
-</body></html>
+        <p id="ssoMessage"></p>
+        <script src="auth.js?v=workspace-1"></script>
+        <script src="user-storage.js"></script>
+        <script src="features-vi.js"></script>
+        <script src="cloud-history.js?v=batch-600"></script>
+        <script src="navigation.js?v=workspace-1"></script>
+        <script src="theme.js"></script>
+        <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+        <script src="batch-results.js?v=prediction-filters"></script>
+        <script src="batch.js?v=label-errors"></script>
+    </body>
+</html>

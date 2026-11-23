@@ -1,172 +1,214 @@
-
-<!DOCTYPE html>
+<!doctype html>
 <html lang="vi">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <title>Phân tích mẫu | Breast-Cancer SVM</title>
+        <title>Phân tích mẫu | Breast-Cancer SVM</title>
 
-    <link rel="stylesheet" href="style.css">
-<link rel="stylesheet" href="modern.css">
-<link rel="stylesheet" href="studio.css">
-<link rel="stylesheet" href="compact.css"><link rel="stylesheet" href="upgrade.css"><link rel="stylesheet" href="research-layout.css"></head>
+        <link rel="stylesheet" href="style.css" />
+        <link rel="stylesheet" href="modern.css" />
+        <link rel="stylesheet" href="studio.css" />
+        <link rel="stylesheet" href="compact.css" />
+        <link rel="stylesheet" href="upgrade.css" />
+        <link rel="stylesheet" href="research-layout.css" />
+        <link rel="stylesheet" href="workspace-layout.css?v=workspace-1" />
+    </head>
 
-<body class="bc-research-page bc-page-analysis">
+    <body class="bc-research-page bc-page-analysis workspace">
+        <div class="app-container">
+            <!-- SIDEBAR -->
+            <aside class="sidebar">
+                <div class="brand">
+                    <div class="brand-icon">✚</div>
+                    <div>
+                        <h2>Breast-Cancer</h2>
+                        <span>SVM Research Platform</span>
+                    </div>
+                </div>
 
-<div class="app-container">
+                <div class="menu-label">MENU CHÍNH</div>
 
-    <!-- SIDEBAR -->
-    <aside class="sidebar">
+                <nav class="sidebar-menu">
+                    <a href="index.html" class="menu-item">◫ &nbsp; Tổng quan</a>
+                    <a href="analysis.html" class="menu-item">⌕ &nbsp; Phân tích một mẫu</a>
+                    <a href="batch.html" class="menu-item">▦ &nbsp; Phân tích file</a>
+                    <a href="history.html" class="menu-item">▤ &nbsp; Lịch sử phân tích</a>
+                    <a href="statistics.html" class="menu-item">◴ &nbsp; Thống kê cá nhân</a>
+                    <div class="menu-label">THÔNG TIN</div>
+                    <a href="compare.html" class="menu-item">▥ &nbsp; So sánh 4 kernel SVM</a>
+                    <a href="admin.html" class="menu-item" id="adminNavLink" hidden
+                        >♛ &nbsp; Quản trị hệ thống</a
+                    >
+                    <a href="model.html" class="menu-item">◇ &nbsp; Mô hình SVM</a>
+                    <a href="profile.html" class="menu-item">♙ &nbsp; Tài khoản của tôi</a>
+                    <a href="author.html" class="menu-item">✧ &nbsp; Tác giả & Hướng dẫn</a>
+                </nav>
 
-        <div class="brand">
-            <div class="brand-icon">✚</div>
-            <div>
-                <h2>Breast-Cancer</h2>
-                <span>SVM Research Platform</span>
-            </div>
+                <div class="sidebar-bottom">
+                    <div class="user-profile">
+                        <div class="avatar">ID</div>
+                        <div class="user-info">
+                            <strong id="ssoUserName">Người dùng</strong
+                            ><span id="ssoUserEmail">BreastCare</span>
+                        </div>
+                    </div>
+                    <button class="sidebar-logout" id="ssoLogoutBtn" type="button">
+                        Đăng xuất
+                    </button>
+                </div>
+            </aside>
+
+            <!-- MAIN CONTENT -->
+            <main class="main-content">
+                <!-- TOPBAR -->
+                <header class="topbar">
+                    <div>
+                        <span class="breadcrumb"> Trang chủ / Phân tích mẫu </span>
+
+                        <h2>Phân tích mẫu</h2>
+                    </div>
+
+                    <div class="topbar-right">
+                        <span class="status">● Hệ thống sẵn sàng</span>
+                        <div class="top-avatar">U</div>
+                    </div>
+                </header>
+
+                <!-- ANALYSIS CONTENT -->
+                <section class="dashboard">
+                    <header class="research-hero">
+                        <h1>Phân tích một mẫu</h1>
+                        <p>Nhập 30 đặc trưng hoặc chọn mẫu để dự đoán bằng SVM.</p>
+                    </header>
+
+                    <section class="content-card research-kernel-bar" aria-labelledby="kernelTitle">
+                        <h3 id="kernelTitle">Kernel</h3>
+                        <div class="kernel-options" id="kernelOptions">
+                            <label><input type="checkbox" value="Linear" /> Linear</label>
+                            <label><input type="checkbox" value="RBF" checked /> RBF</label>
+                            <label><input type="checkbox" value="Polynomial" /> Polynomial</label>
+                            <label><input type="checkbox" value="Sigmoid" /> Sigmoid</label>
+                        </div>
+                    </section>
+
+                    <form id="predictionForm" novalidate>
+                        <div class="sample-picker content-card">
+                            <label for="sampleChoice">Mẫu nghiên cứu</label>
+                            <select id="sampleChoice"></select>
+                            <button class="primary-button" type="button" id="fillResearchSample">
+                                Điền dữ liệu mẫu
+                            </button>
+                        </div>
+
+                        <section
+                            class="content-card research-feature-card"
+                            aria-label="30 đặc trưng"
+                        >
+                            <div class="research-tabs" role="tablist" aria-label="Nhóm đặc trưng">
+                                <button
+                                    type="button"
+                                    id="meanTab"
+                                    role="tab"
+                                    aria-controls="meanFeatures"
+                                    aria-selected="true"
+                                >
+                                    Mean (Trung bình)
+                                </button>
+                                <button
+                                    type="button"
+                                    id="errorTab"
+                                    role="tab"
+                                    aria-controls="errorFeatures"
+                                    aria-selected="false"
+                                    tabindex="-1"
+                                >
+                                    Error (Sai số)
+                                </button>
+                                <button
+                                    type="button"
+                                    id="worstTab"
+                                    role="tab"
+                                    aria-controls="worstFeatures"
+                                    aria-selected="false"
+                                    tabindex="-1"
+                                >
+                                    Worst (Xấu nhất)
+                                </button>
+                            </div>
+                            <div
+                                id="meanFeatures"
+                                class="feature-grid"
+                                role="tabpanel"
+                                aria-labelledby="meanTab"
+                            ></div>
+                            <div
+                                id="errorFeatures"
+                                class="feature-grid"
+                                role="tabpanel"
+                                aria-labelledby="errorTab"
+                                hidden
+                            ></div>
+                            <div
+                                id="worstFeatures"
+                                class="feature-grid"
+                                role="tabpanel"
+                                aria-labelledby="worstTab"
+                                hidden
+                            ></div>
+                            <div class="analysis-actions">
+                                <button type="submit" id="predictButton" class="primary-button">
+                                    Phân tích
+                                </button>
+                                <button type="reset" class="secondary-button">Xóa dữ liệu</button>
+                            </div>
+                            <p role="status" id="featureMessage"></p>
+                        </section>
+                    </form>
+
+                    <!-- RESULT -->
+                    <section class="content-card result-card">
+                        <h3>Kết quả phân tích</h3>
+
+                        <div id="result">
+                            <p class="empty-result">
+                                Chưa có kết quả. Vui lòng nhập dữ liệu và nhấn "Phân tích".
+                            </p>
+                        </div>
+                    </section>
+
+                    <!-- NOTICE -->
+                    <div class="notice">
+                        <span>ⓘ</span>
+
+                        <div>
+                            <strong>Lưu ý về kết quả phân tích</strong>
+
+                            <p>
+                                Hệ thống được xây dựng phục vụ mục đích học tập, nghiên cứu và trải
+                                nghiệm mô hình học máy. Kết quả không thay thế chẩn đoán hoặc tư vấn
+                                y khoa.
+                            </p>
+                        </div>
+                    </div>
+
+                    <footer>Breast-Cancer SVM © 2026 · Educational Research Platform</footer>
+                </section>
+            </main>
         </div>
 
-        <div class="menu-label">MENU CHÍNH</div>
+        <script src="auth.js?v=workspace-1"></script>
+        <script src="user-storage.js"></script>
+        <script src="features-vi.js"></script>
 
-        <nav class="sidebar-menu">
-<a href="index.html" class="menu-item">◫ &nbsp; Tổng quan</a>
-<a href="analysis.html" class="menu-item">⌕ &nbsp; Phân tích một mẫu</a>
-<a href="batch.html" class="menu-item">▦ &nbsp; Phân tích file</a>
-<a href="history.html" class="menu-item">▤ &nbsp; Lịch sử phân tích</a>
-<a href="statistics.html" class="menu-item">◴ &nbsp; Thống kê cá nhân</a>
-<div class="menu-label">THÔNG TIN</div>
-<a href="compare.html" class="menu-item">▥ &nbsp; So sánh 4 kernel SVM</a>
-<a href="admin.html" class="menu-item" id="adminNavLink" hidden>♛ &nbsp; Quản trị hệ thống</a>
-<a href="model.html" class="menu-item">◇ &nbsp; Mô hình SVM</a>
-<a href="profile.html" class="menu-item">♙ &nbsp; Tài khoản của tôi</a>
-<a href="author.html" class="menu-item">✧ &nbsp; Tác giả & Hướng dẫn</a>
-</nav>
+        <!-- Kết nối lưu lịch sử Supabase -->
+        <script src="cloud-history.js"></script>
 
-        <div class="sidebar-bottom"><div class="user-profile"><div class="avatar">ID</div><div class="user-info"><strong id="ssoUserName">Người dùng</strong><span id="ssoUserEmail">BreastCare</span></div></div><button class="sidebar-logout" id="ssoLogoutBtn" type="button">Đăng xuất</button></div></aside>
+        <!-- Xử lý phân tích một mẫu -->
+        <script src="research-samples.js"></script>
+        <script src="script.js?v=research-layout"></script>
 
-
-    <!-- MAIN CONTENT -->
-    <main class="main-content">
-
-        <!-- TOPBAR -->
-        <header class="topbar">
-
-            <div>
-                <span class="breadcrumb">
-                    Trang chủ / Phân tích mẫu
-                </span>
-
-                <h2>Phân tích mẫu</h2>
-            </div>
-
-            <div class="topbar-right">
-                <span class="status">● Hệ thống sẵn sàng</span>
-                <div class="top-avatar">U</div>
-            </div>
-
-        </header>
-
-
-        <!-- ANALYSIS CONTENT -->
-        <section class="dashboard">
-
-            <header class="research-hero"><h1>Phân tích một mẫu</h1></header>
-
-            <section class="content-card research-kernel-bar" aria-labelledby="kernelTitle">
-                <h3 id="kernelTitle">Kernel</h3>
-                <div class="kernel-options" id="kernelOptions">
-                    <label><input type="checkbox" value="Linear"> Linear</label>
-                    <label><input type="checkbox" value="RBF" checked> RBF</label>
-                    <label><input type="checkbox" value="Polynomial"> Polynomial</label>
-                    <label><input type="checkbox" value="Sigmoid"> Sigmoid</label>
-                </div>
-            </section>
-
-            <form id="predictionForm" novalidate>
-                <div class="sample-picker content-card">
-                    <label for="sampleChoice">Mẫu nghiên cứu</label>
-                    <select id="sampleChoice"></select>
-                    <button class="primary-button" type="button" id="fillResearchSample">Điền dữ liệu mẫu</button>
-                </div>
-
-                <section class="content-card research-feature-card" aria-label="30 đặc trưng">
-                    <div class="research-tabs" role="tablist" aria-label="Nhóm đặc trưng">
-                        <button type="button" id="meanTab" role="tab" aria-controls="meanFeatures" aria-selected="true">Mean (Trung bình)</button>
-                        <button type="button" id="errorTab" role="tab" aria-controls="errorFeatures" aria-selected="false" tabindex="-1">Error (Sai số)</button>
-                        <button type="button" id="worstTab" role="tab" aria-controls="worstFeatures" aria-selected="false" tabindex="-1">Worst (Xấu nhất)</button>
-                    </div>
-                    <div id="meanFeatures" class="feature-grid" role="tabpanel" aria-labelledby="meanTab"></div>
-                    <div id="errorFeatures" class="feature-grid" role="tabpanel" aria-labelledby="errorTab" hidden></div>
-                    <div id="worstFeatures" class="feature-grid" role="tabpanel" aria-labelledby="worstTab" hidden></div>
-                    <div class="analysis-actions">
-                        <button type="submit" id="predictButton" class="primary-button">Phân tích</button>
-                        <button type="reset" class="secondary-button">Xóa dữ liệu</button>
-                    </div>
-                    <p role="status" id="featureMessage"></p>
-                </section>
-            </form>
-
-            <!-- RESULT -->
-            <section class="content-card result-card">
-
-                <h3>Kết quả phân tích</h3>
-
-                <div id="result">
-
-                    <p class="empty-result">
-                        Chưa có kết quả. Vui lòng nhập dữ liệu
-                        và nhấn "Phân tích".
-                    </p>
-
-                </div>
-
-            </section>
-
-
-            <!-- NOTICE -->
-            <div class="notice">
-
-                <span>ⓘ</span>
-
-                <div>
-                    <strong>Lưu ý về kết quả phân tích</strong>
-
-                    <p>
-                        Hệ thống được xây dựng phục vụ mục đích học tập,
-                        nghiên cứu và trải nghiệm mô hình học máy.
-                        Kết quả không thay thế chẩn đoán hoặc tư vấn y khoa.
-                    </p>
-                </div>
-
-            </div>
-
-
-            <footer>
-                Breast-Cancer SVM © 2026 · Educational Research Platform
-            </footer>
-
-        </section>
-
-    </main>
-
-</div>
-
-
-
-<script src="auth.js"></script>
-<script src="user-storage.js"></script>
-<script src="features-vi.js"></script>
-
-<!-- Kết nối lưu lịch sử Supabase -->
-<script src="cloud-history.js"></script>
-
-<!-- Xử lý phân tích một mẫu -->
-<script src="research-samples.js"></script>
-<script src="script.js?v=research-layout"></script>
-
-<script src="navigation.js"></script>
-<script src="theme.js"></script>
-</body>
+        <script src="navigation.js?v=workspace-1"></script>
+        <script src="theme.js"></script>
+    </body>
 </html>
-

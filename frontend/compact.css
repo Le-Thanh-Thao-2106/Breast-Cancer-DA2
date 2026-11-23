@@ -1,49 +1,284 @@
 /* Breast-Cancer compact UI: overrides after studio.css */
-html{font-size:14px}body{font-size:13px!important;line-height:1.5!important}
-.sidebar .brand h2{font-size:18px!important}.sidebar .brand span{font-size:11px!important}
-.sidebar-menu .menu-item{font-size:12.5px!important;padding-top:11px!important;padding-bottom:11px!important}
-.menu-label,.breadcrumb,.eyebrow,.insight-kicker{font-size:10px!important;letter-spacing:.08em!important}
-.topbar{padding-top:16px!important;padding-bottom:16px!important}.topbar h2{font-size:19px!important}
-.dashboard{padding-top:20px!important}.dashboard h1{font-size:clamp(22px,2.5vw,30px)!important;line-height:1.23!important;letter-spacing:-.5px!important}
-.dashboard h2,.insight-strip h2{font-size:clamp(19px,2vw,25px)!important;line-height:1.3!important}
-.dashboard h3{font-size:16px!important}.dashboard p,.dashboard small,.dashboard span{font-size:12.5px}
-.hero-new,.welcome-section{padding:25px 32px!important;border-radius:18px!important;min-height:0!important}
-.hero-new h1,.welcome-section h1{margin:10px 0!important}.hero-new p,.welcome-section p{font-size:13px!important}
-.insight-strip{padding:24px 28px!important;border-radius:18px!important}.insight-strip h2{font-size:27px!important}
-.insight-actions a,.primary-button,.secondary-button,.action-link,button{font-size:12.5px!important}
-.stat-card{padding:18px!important}.stat-card h2{font-size:25px!important}.stat-card span,.stat-card small{font-size:11px!important}
-.content-card,.distribution-card,.studio-section{padding:20px!important;border-radius:17px!important}
-.profile-monogram{overflow:hidden}.profile-monogram img,.avatar img,.top-avatar img{width:100%;height:100%;object-fit:cover;border-radius:inherit}
-.bc-avatar-actions{display:flex;gap:10px;flex-wrap:wrap;margin:12px 0}.bc-avatar-actions input{max-width:220px;font-size:12px}
-.bc-inline-message{font-size:12px;color:#5256d9;margin:8px 0}.bc-metric-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(155px,1fr));gap:12px;margin:14px 0}
-.bc-metric{background:#f6f5ff;border:1px solid #e4e2fa;padding:15px;border-radius:13px}.bc-metric strong{display:block;font-size:20px;color:#383e98}.bc-metric span{font-size:11px;color:#67708e}
-.bc-compare-table{width:100%;border-collapse:collapse;margin-top:15px;font-size:12px}.bc-compare-table th,.bc-compare-table td{padding:11px;border-bottom:1px solid #e5e7f2;text-align:left}.bc-compare-table th{background:#f0efff}
-.bc-bar{height:8px;background:#eae8fa;border-radius:8px;overflow:hidden}.bc-bar i{display:block;height:100%;background:#6460d9}
-@media(max-width:760px){.hero-new,.welcome-section,.insight-strip{padding:20px!important}.dashboard h1{font-size:22px!important}}
+html {
+    font-size: 14px;
+}
+body {
+    font-size: 13px !important;
+    line-height: 1.5 !important;
+}
+.sidebar .brand h2 {
+    font-size: 18px !important;
+}
+.sidebar .brand span {
+    font-size: 11px !important;
+}
+.sidebar-menu .menu-item {
+    font-size: 12.5px !important;
+    padding-top: 11px !important;
+    padding-bottom: 11px !important;
+}
+.menu-label,
+.breadcrumb,
+.eyebrow,
+.insight-kicker {
+    font-size: 10px !important;
+    letter-spacing: 0.08em !important;
+}
+.topbar {
+    padding-top: 16px !important;
+    padding-bottom: 16px !important;
+}
+.topbar h2 {
+    font-size: 19px !important;
+}
+.dashboard {
+    padding-top: 20px !important;
+}
+.dashboard h1 {
+    font-size: clamp(22px, 2.5vw, 30px) !important;
+    line-height: 1.23 !important;
+    letter-spacing: -0.5px !important;
+}
+.dashboard h2,
+.insight-strip h2 {
+    font-size: clamp(19px, 2vw, 25px) !important;
+    line-height: 1.3 !important;
+}
+.dashboard h3 {
+    font-size: 16px !important;
+}
+.dashboard p,
+.dashboard small,
+.dashboard span {
+    font-size: 12.5px;
+}
+.hero-new,
+.welcome-section {
+    padding: 25px 32px !important;
+    border-radius: 18px !important;
+    min-height: 0 !important;
+}
+.hero-new h1,
+.welcome-section h1 {
+    margin: 10px 0 !important;
+}
+.hero-new p,
+.welcome-section p {
+    font-size: 13px !important;
+}
+.insight-strip {
+    padding: 24px 28px !important;
+    border-radius: 18px !important;
+}
+.insight-strip h2 {
+    font-size: 27px !important;
+}
+.insight-actions a,
+.primary-button,
+.secondary-button,
+.action-link,
+button {
+    font-size: 12.5px !important;
+}
+.stat-card {
+    padding: 18px !important;
+}
+.stat-card h2 {
+    font-size: 25px !important;
+}
+.stat-card span,
+.stat-card small {
+    font-size: 11px !important;
+}
+.content-card,
+.distribution-card,
+.studio-section {
+    padding: 20px !important;
+    border-radius: 17px !important;
+}
+.profile-monogram {
+    overflow: hidden;
+}
+.profile-monogram img,
+.avatar img,
+.top-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+}
+.bc-avatar-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin: 12px 0;
+}
+.bc-avatar-actions input {
+    max-width: 220px;
+    font-size: 12px;
+}
+.bc-inline-message {
+    font-size: 12px;
+    color: #5256d9;
+    margin: 8px 0;
+}
+.bc-metric-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(155px, 1fr));
+    gap: 12px;
+    margin: 14px 0;
+}
+.bc-metric {
+    background: #f6f5ff;
+    border: 1px solid #e4e2fa;
+    padding: 15px;
+    border-radius: 13px;
+}
+.bc-metric strong {
+    display: block;
+    font-size: 20px;
+    color: #383e98;
+}
+.bc-metric span {
+    font-size: 11px;
+    color: #67708e;
+}
+.bc-compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    font-size: 12px;
+}
+.bc-compare-table th,
+.bc-compare-table td {
+    padding: 11px;
+    border-bottom: 1px solid #e5e7f2;
+    text-align: left;
+}
+.bc-compare-table th {
+    background: #f0efff;
+}
+.bc-bar {
+    height: 8px;
+    background: #eae8fa;
+    border-radius: 8px;
+    overflow: hidden;
+}
+.bc-bar i {
+    display: block;
+    height: 100%;
+    background: #6460d9;
+}
+@media (max-width: 760px) {
+    .hero-new,
+    .welcome-section,
+    .insight-strip {
+        padding: 20px !important;
+    }
+    .dashboard h1 {
+        font-size: 22px !important;
+    }
+}
 
 /* DA2 compact controls */
-.feature-section{padding:16px 20px!important;margin-bottom:12px!important}
-.feature-section .card-heading{margin-bottom:10px!important}
-.feature-section .feature-grid{gap:10px 14px!important}
-.feature-section input{padding:8px 10px!important;min-height:34px!important}
-.feature-section label{font-size:12px!important}
-.bc-feature-fold .card-heading{cursor:pointer}
-.bc-feature-fold.bc-collapsed .feature-grid{display:none!important}
-.bc-feature-fold .card-heading h3::after{content:'  ▾';font-size:12px;color:#625bd7}
-.bc-feature-fold.bc-collapsed .card-heading h3::after{content:'  ▸'}
-.bc-batch-toolbar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:14px 0}
-.bc-batch-toolbar select{padding:9px 12px;border:1px solid #ccc;border-radius:9px;background:var(--card-bg,#fff);color:inherit}
-.bc-compact-matrix{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-@media(max-width:1100px){.bc-compact-matrix{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:650px){.bc-compact-matrix{grid-template-columns:1fr}}
-.bc-compact-matrix .bc-matrix-card{padding:12px!important;min-width:0}
-.bc-compact-matrix .bc-matrix-card *{font-size:12px}
+.feature-section {
+    padding: 16px 20px !important;
+    margin-bottom: 12px !important;
+}
+.feature-section .card-heading {
+    margin-bottom: 10px !important;
+}
+.feature-section .feature-grid {
+    gap: 10px 14px !important;
+}
+.feature-section input {
+    padding: 8px 10px !important;
+    min-height: 34px !important;
+}
+.feature-section label {
+    font-size: 12px !important;
+}
+.bc-feature-fold .card-heading {
+    cursor: pointer;
+}
+.bc-feature-fold.bc-collapsed .feature-grid {
+    display: none !important;
+}
+.bc-feature-fold .card-heading h3::after {
+    content: "  ▾";
+    font-size: 12px;
+    color: #625bd7;
+}
+.bc-feature-fold.bc-collapsed .card-heading h3::after {
+    content: "  ▸";
+}
+.bc-batch-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin: 14px 0;
+}
+.bc-batch-toolbar select {
+    padding: 9px 12px;
+    border: 1px solid #ccc;
+    border-radius: 9px;
+    background: var(--card-bg, #fff);
+    color: inherit;
+}
+.bc-compact-matrix {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+}
+@media (max-width: 1100px) {
+    .bc-compact-matrix {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+@media (max-width: 650px) {
+    .bc-compact-matrix {
+        grid-template-columns: 1fr;
+    }
+}
+.bc-compact-matrix .bc-matrix-card {
+    padding: 12px !important;
+    min-width: 0;
+}
+.bc-compact-matrix .bc-matrix-card * {
+    font-size: 12px;
+}
 
-#benchmarkConfusion{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px!important}
-#benchmarkConfusion .matrix-panel{min-width:0!important;padding:10px!important;margin:0!important}
-#benchmarkConfusion .matrix-grid{gap:5px!important}
-#benchmarkConfusion .matrix-cell{min-width:0!important;padding:8px 3px!important}
-#benchmarkConfusion .matrix-cell strong{font-size:19px!important}
-#benchmarkConfusion .matrix-cell small{font-size:9px!important}
-@media(max-width:1100px){#benchmarkConfusion{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:620px){#benchmarkConfusion{grid-template-columns:1fr}}
+#benchmarkConfusion {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px !important;
+}
+#benchmarkConfusion .matrix-panel {
+    min-width: 0 !important;
+    padding: 10px !important;
+    margin: 0 !important;
+}
+#benchmarkConfusion .matrix-grid {
+    gap: 5px !important;
+}
+#benchmarkConfusion .matrix-cell {
+    min-width: 0 !important;
+    padding: 8px 3px !important;
+}
+#benchmarkConfusion .matrix-cell strong {
+    font-size: 19px !important;
+}
+#benchmarkConfusion .matrix-cell small {
+    font-size: 9px !important;
+}
+@media (max-width: 1100px) {
+    #benchmarkConfusion {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+@media (max-width: 620px) {
+    #benchmarkConfusion {
+        grid-template-columns: 1fr;
+    }
+}
