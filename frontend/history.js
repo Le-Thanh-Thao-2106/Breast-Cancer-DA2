@@ -24,6 +24,7 @@ const detailTime = document.getElementById("detailTime");
 const detailResult = document.getElementById("detailResult");
 const detailFeatures = document.getElementById("detailFeatures");
 const closeDetailButton = document.getElementById("closeDetailButton");
+let activeDetail;
 
 
 // =====================================
@@ -57,7 +58,10 @@ function normalizeCloudSession(session) {
             sampleCount: session.sample_count,
             kernels: session.kernels || [],
             summary: summary,
-            results: details.results || []
+            results: details.results || [],
+            cloudDetails: details.summaryOnly === true,
+            samples: details.samples,
+            labels: details.labels
         };
     }
 
@@ -218,7 +222,7 @@ function renderHistory() {
             badge.className = normalizeLabel(item.predictedLabel) === "malignant"
                 ? "history-badge malignant"
                 : "history-badge benign";
-            badge.textContent = item.type === "batch" ? `CSV · ${item.sampleCount} mẫu` : (item.predictedLabel || "--");
+            badge.textContent = item.type === "batch" ? `File · ${item.sampleCount} mẫu` : (item.predictedLabel || "--");
 
             labelCell.appendChild(badge);
 
@@ -279,27 +283,77 @@ function renderHistory() {
 // 6. SHOW HISTORY DETAIL
 // =====================================
 
-function showDetail(id) {
+function hideHistoryDetail() {
+    activeDetail = undefined;
+    detailSection.hidden = true;
+    detailSection.style.display = "none";
+}
 
-    const history = getHistory();
+function showBatchInput(item, index) {
+    const { element, label } = BatchResults;
+    const input = item.samples?.[index];
+    if (!input) {
+        detailFeatures.replaceChildren(element("p", "Phiên cũ chưa lưu 30 giá trị đầu vào. Bạn có thể tải lại file gốc để phân tích."));
+        return;
+    }
+    const heading = element("p", `Mẫu ${index + 1}${item.labels ? ` · Nhãn thật: ${label(item.labels[index])}` : ""}`);
+    const grid = element("dl", undefined, "research-input-values");
+    window.WDBC_FEATURE_NAMES.forEach((name, featureIndex) => {
+        const pair = element("div");
+        pair.append(element("dt", `${name} (${window.FEATURE_TRANSLATIONS[featureIndex]})`), element("dd", input[name] ?? "—"));
+        grid.append(pair);
+    });
+    detailFeatures.replaceChildren(heading, grid);
+}
 
-    const item = history.find(
-        record => String(record.id) === String(id)
-    );
+async function showDetail(id) {
+    const local = getHistory().find(record => String(record.id) === String(id));
+    if (!local) return;
+    const selection = Symbol();
+    activeDetail = selection;
+    detailSection.hidden = false;
+    detailSection.style.display = "block";
+    detailTime.textContent = "Thời gian: " + formatDate(local.analyzedAt);
+    detailFeatures.replaceChildren();
 
-    if (!item) {
+    if (local.type === "batch") {
+        let item = local;
+        const { element } = BatchResults;
+        detailResult.replaceChildren(element("h3", `${item.filename || "File không tên"} (${item.sampleCount} mẫu)`));
+        if (item.cloudDetails) {
+            const loading = element("p", "Đang tải chi tiết phiên…");
+            detailResult.append(loading);
+            detailSection.scrollIntoView({ behavior: "smooth", block: "start" });
+            try {
+                item = normalizeCloudSession(await window.bcLoadCloudSession(id));
+            } catch (error) {
+                if (activeDetail === selection) {
+                    loading.textContent = error.message;
+                    const summary = element("div", undefined, "research-comparison");
+                    BatchResults.renderComparison(summary, local);
+                    detailResult.append(summary);
+                }
+                return;
+            }
+            if (activeDetail !== selection) return;
+            loading.remove();
+        }
+
+        const resultHost = element("div");
+        const summaryHost = element("div", undefined, "research-comparison");
+        detailResult.append(resultHost, summaryHost);
+        const changeKernel = kernel => BatchResults.renderComparison(summaryHost, item, kernel);
+        BatchResults.renderDetails(resultHost, item, {
+            onKernel: changeKernel,
+            onInspect: item.samples?.length ? index => showBatchInput(item, index) : undefined
+        });
+        changeKernel(item.results?.[0]?.kernel);
+        showBatchInput(item, 0);
+        detailSection.scrollIntoView({ behavior: "smooth", block: "start" });
         return;
     }
 
-    if(item.type === 'batch') {
-        detailTime.textContent='Thời gian: '+formatDate(item.analyzedAt);
-        detailResult.replaceChildren(); detailFeatures.replaceChildren();
-        const heading=document.createElement('h3');heading.textContent=`Phiên CSV: ${item.filename || 'Không tên'} (${item.sampleCount} mẫu)`;detailResult.append(heading);
-        const table=document.createElement('table');table.className='bc-compare-table';
-        const row=document.createElement('tr');['Kernel','Ác tính','Lành tính','Suy luận (ms)'].forEach(x=>{const th=document.createElement('th');th.textContent=x;row.append(th)});table.append(row);
-        (item.summary||[]).forEach(r=>{const tr=document.createElement('tr');[r.kernel,r.malignant,r.benign,r.elapsed_ms].forEach(x=>{const td=document.createElement('td');td.textContent=x;tr.append(td)});table.append(tr)});detailResult.append(table);
-        detailSection.hidden=false;detailSection.scrollIntoView({behavior:'smooth',block:'start'});return;
-    }
+    const item = local;
     detailTime.textContent =
         "Thời gian: " + formatDate(item.analyzedAt);
 
@@ -406,7 +460,7 @@ async function deleteRecord(id) {
         saveHistory(updatedHistory);
 
         // Đóng phần chi tiết
-        detailSection.style.display = "none";
+        hideHistoryDetail();
 
         // Cập nhật bảng lịch sử
         renderHistory();
@@ -495,7 +549,7 @@ clearButton.addEventListener("click", async () => {
         // Chỉ xóa Local Storage khi tất cả yêu cầu thành công
         saveHistory([]);
 
-        detailSection.style.display = "none";
+        hideHistoryDetail();
         renderHistory();
 
         alert(
@@ -541,9 +595,7 @@ searchInput.addEventListener("input", renderHistory);
 filterSelect.addEventListener("change", renderHistory);
 
 
-closeDetailButton.addEventListener("click", () => {
-    detailSection.style.display = "none";
-});
+closeDetailButton.addEventListener("click", hideHistoryDetail);
 
 
 
@@ -568,7 +620,9 @@ async function initializeHistory() {
             .map(normalizeCloudSession);
 
         // Cập nhật bộ nhớ trình duyệt
-        saveHistory(cloudHistory);
+        const cloudIds = new Set(cloudHistory.map(item => String(item.id)));
+        const cachedOnly = getHistory().filter(item => item.type === "batch" && !item.cloudDetails && !cloudIds.has(String(item.id)));
+        saveHistory([...cloudHistory, ...cachedOnly].sort((a, b) => new Date(b.analyzedAt) - new Date(a.analyzedAt)));
 
         // Hiển thị lại bảng lịch sử
         renderHistory();

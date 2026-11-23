@@ -1,58 +1,239 @@
-const batchFeatureNames=['mean radius','mean texture','mean perimeter','mean area','mean smoothness','mean compactness','mean concavity','mean concave points','mean symmetry','mean fractal dimension','radius error','texture error','perimeter error','area error','smoothness error','compactness error','concavity error','concave points error','symmetry error','fractal dimension error','worst radius','worst texture','worst perimeter','worst area','worst smoothness','worst compactness','worst concavity','worst concave points','worst symmetry','worst fractal dimension'];
-let batchRows=[],batchRuns=[],activeKernel='',batchFilename='';const $=id=>document.getElementById(id),msg=t=>$('batchMessage').textContent=t;
-function parseCSV(text){const rows=[];let row=[],field='',quoted=false;for(let i=0;i<text.length;i++){const c=text[i];if(c==='"'){if(quoted&&text[i+1]==='"'){field+='"';i++}else quoted=!quoted}else if(c===','&&!quoted){row.push(field);field=''}else if((c==='\n'||c==='\r')&&!quoted){if(c==='\r'&&text[i+1]==='\n')i++;row.push(field);if(row.some(x=>x.trim()))rows.push(row);row=[];field=''}else field+=c}if(quoted)throw Error('Dấu ngoặc kép chưa đóng');row.push(field);if(row.some(x=>x.trim()))rows.push(row);return rows}
+const batchLimit = 600;
+const batchFeatureNames = window.WDBC_FEATURE_NAMES;
+const getBatchElement = id => document.getElementById(id);
+const fileInput = getBatchElement("csvFile");
+const runButton = getBatchElement("runBatch");
+const labeledMode = getBatchElement("labeledMode");
+const unlabeledMode = getBatchElement("unlabeledMode");
+const kernelInputs = [...document.querySelectorAll("#batchKernelOptions input")];
+let labeled = false;
+let readRevision = 0;
+let batchFile;
+let batchSession;
+let requestElapsed = 0;
 
-async function readDataFile(file) {
-    const ext = file.name.split(".").pop().toLowerCase();
-
-    if (ext === "csv") {
-        const text = (await file.text()).replace(/^\uFEFF/, "");
-        return parseCSV(text);
-    }
-
-    if (ext === "txt") {
-        const text = (await file.text()).replace(/^\uFEFF/, "");
-        const firstLine = text.split(/\r?\n/).find(x => x.trim()) || "";
-
-        // TXT có thể phân cách bằng tab hoặc dấu phẩy.
-        if (firstLine.includes("\t")) {
-            return text
-                .split(/\r?\n/)
-                .filter(line => line.trim())
-                .map(line => line.split("\t"));
-        }
-
-        return parseCSV(text);
-    }
-
-    if (ext === "xlsx" || ext === "xls") {
-        if (typeof XLSX === "undefined") {
-            throw new Error("Chưa tải thư viện đọc Excel");
-        }
-
-        const buffer = await file.arrayBuffer();
-        const workbook = XLSX.read(buffer, { type: "array" });
-
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-
-        if (!sheet) {
-            throw new Error("Không tìm thấy trang tính");
-        }
-
-        return XLSX.utils.sheet_to_json(sheet, {
-            header: 1,
-            defval: "",
-            raw: false
-        });
-    }
-
-    throw new Error("Chỉ hỗ trợ CSV, TXT, XLSX và XLS");
+function batchMessage(text) {
+    getBatchElement("batchMessage").textContent = text;
 }
 
-function csvCell(v){const s=String(v??'');return /^[=+@-]/.test(s)?'"\t'+s.replace(/"/g,'""')+'"':/[",\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s}
-function downloadCSV(filename,rows){const blob=new Blob(['\ufeff'+rows.map(r=>r.map(csvCell).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download=filename;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
-$('downloadTemplate').onclick=()=>{const a=document.createElement('a');a.href='breast-cancer-mau-20-dong.csv';a.download=a.href;a.click()};
-$('csvFile').onchange=async e=>{batchRows=[];batchRuns=[];$('runBatch').disabled=true;$('exportBatch').disabled=true;$('batchPreview').replaceChildren();const file=e.target.files?.[0];if(!file)return;batchFilename=file.name;try{if(file.size>2e6)throw Error('File vượt quá 2 MB');const raw = await readDataFile(file);if(raw.length<2)throw Error('File cần tiêu đề và dữ liệu');const headers=raw[0].map(x=>x.trim());if(new Set(headers).size!==headers.length)throw Error('Tên cột trùng');const missing=batchFeatureNames.filter(x=>!headers.includes(x));if(missing.length)throw Error('Thiếu cột: '+missing.join(', '));if(raw.length-1>200)throw Error('Tối đa 200 mẫu/lần');batchRows=raw.slice(1).map((r,i)=>{if(r.length!==headers.length)throw Error('Dòng '+(i+2)+' sai số cột');const obj={};batchFeatureNames.forEach(k=>{const val=r[headers.indexOf(k)].trim(),n=Number(val);if(!val||!Number.isFinite(n))throw Error('Sai dữ liệu dòng '+(i+2)+', cột '+k);obj[k]=n});return obj});msg('Đã đọc '+batchRows.length+' mẫu từ '+file.name);$('runBatch').disabled=false}catch(err){msg('Lỗi đọc file: ' + err.message)}};
-function showKernel(kernel){const run=batchRuns.find(r=>r.kernel===kernel);if(!run)return;activeKernel=kernel;const predictions=run.predictions;document.getElementById('batchMalignant').textContent=predictions.filter(r=>r.predicted_class===0).length;document.getElementById('batchBenign').textContent=predictions.filter(r=>r.predicted_class===1).length;const target=$('batchPreview');target.replaceChildren();const toolbar=document.createElement('div');toolbar.className='bc-batch-toolbar';const label=document.createElement('strong');label.textContent='Bảng chi tiết của kernel:';const select=document.createElement('select');select.setAttribute('aria-label','Chọn kernel để xem bảng kết quả');batchRuns.forEach(r=>{const o=document.createElement('option');o.value=r.kernel;o.textContent=r.kernel;select.append(o)});select.value=kernel;select.onchange=()=>showKernel(select.value);toolbar.append(label,select);const note=document.createElement('small');note.textContent='Số liệu phía dưới thuộc kernel '+kernel+'; chọn kernel khác để đối chiếu.';toolbar.append(note);target.append(toolbar);const table=document.createElement('table');table.className='batch-table';const head=document.createElement('tr');['STT','Kết quả ('+kernel+')','Ác tính','Lành tính'].forEach(x=>{const th=document.createElement('th');th.textContent=x;head.append(th)});table.append(head);predictions.forEach((d,i)=>{const tr=document.createElement('tr');[i+1,d.predicted_label,(d.probability_malignant*100).toFixed(2)+'%',(d.probability_benign*100).toFixed(2)+'%'].forEach(v=>{const td=document.createElement('td');td.textContent=v;tr.append(td)});table.append(tr)});target.append(table);if(batchRuns.length>1){const h=document.createElement('h3');h.textContent='So sánh các kernel đã chọn';target.append(h);const comparison=document.createElement('table');comparison.className='bc-compare-table';const tr=document.createElement('tr');['Kernel','Ác tính','Lành tính','Suy luận (ms)','Khác '+kernel].forEach(x=>{const th=document.createElement('th');th.textContent=x;tr.append(th)});comparison.append(tr);batchRuns.forEach(r=>{const row=document.createElement('tr'),diff=r.predictions.filter((x,i)=>x.predicted_class!==predictions[i].predicted_class).length;[r.kernel,r.predictions.filter(x=>x.predicted_class===0).length,r.predictions.filter(x=>x.predicted_class===1).length,r.elapsed_ms.toFixed(3),diff+' mẫu'].forEach(v=>{const td=document.createElement('td');td.textContent=v;row.append(td)});comparison.append(row)});target.append(comparison)}}
-$('runBatch').onclick=async()=>{if(!batchRows.length)return;$('runBatch').disabled=true;msg('Đang phân tích...');const started=performance.now();try{const kernels=[...document.querySelectorAll('#batchKernelOptions input:checked')].map(x=>x.value);if(!kernels.length)throw Error('Chọn ít nhất một kernel');const res=await fetch(BREASTCARE_API + '/predict/batch/compare',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({samples:batchRows,kernels})});const data=await res.json();if(!res.ok)throw Error(JSON.stringify(data.detail||data));batchRuns=data.results;activeKernel=batchRuns[0].kernel;$('batchMetrics').hidden=false;$('batchCount').textContent=batchRows.length;$('batchTime').textContent=(performance.now()-started).toFixed(1)+' ms';showKernel(activeKernel);$('exportBatch').disabled=false;const session={id:'batch_'+Date.now(),type:'batch',analyzedAt:new Date().toISOString(),filename:batchFilename,sampleCount:batchRows.length,kernels:batchRuns.map(r=>r.kernel),summary:batchRuns.map(r=>({kernel:r.kernel,malignant:r.predictions.filter(p=>p.predicted_class===0).length,benign:r.predictions.filter(p=>p.predicted_class===1).length,elapsed_ms:r.elapsed_ms})),results:batchRuns.map(r=>({kernel:r.kernel,predictions:r.predictions}))};const key=getUserHistoryKey(),history=JSON.parse(localStorage.getItem(key)||'[]');localStorage.setItem(key,JSON.stringify([session,...(Array.isArray(history)?history:[])].slice(0,300)));if(typeof window.bcSaveCloudSession==='function'){try{await window.bcSaveCloudSession(session);msg('Đã phân tích '+batchRows.length+' mẫu; lưu một phiên trong lịch sử và Supabase.')}catch(e){msg('Đã phân tích và lưu cục bộ. Chưa đồng bộ Supabase: '+e.message)}}else msg('Đã phân tích '+batchRows.length+' mẫu; lưu thành một phiên trong lịch sử cục bộ.')}catch(e){msg('Không thể phân tích: '+e.message)}finally{$('runBatch').disabled=false}};
-$('exportBatch').onclick=()=>{if(!batchRuns.length)return;const cols=batchRuns.flatMap(r=>[r.kernel+'_class',r.kernel+'_label',r.kernel+'_malignant',r.kernel+'_benign']);downloadCSV('breast-cancer-compare.csv',[[...batchFeatureNames,...cols],...batchRows.map((row,i)=>[...batchFeatureNames.map(k=>row[k]),...batchRuns.flatMap(r=>{const p=r.predictions[i];return[p.predicted_class,p.predicted_label,p.probability_malignant,p.probability_benign]})])])};
+function parseDelimited(text, separator) {
+    const rows = [];
+    let row = [], field = "", quoted = false;
+    const finishRow = () => {
+        row.push(field);
+        if (row.some(value => value.trim())) rows.push(row);
+        row = [];
+        field = "";
+    };
+    for (let index = 0; index < text.length; index++) {
+        const char = text[index];
+        if (char === '"') {
+            if (quoted && text[index + 1] === '"') {
+                field += '"';
+                index++;
+            } else quoted = !quoted;
+        } else if (!quoted && char === separator) {
+            row.push(field);
+            field = "";
+        } else if (!quoted && (char === "\n" || char === "\r")) {
+            if (char === "\r" && text[index + 1] === "\n") index++;
+            finishRow();
+        } else field += char;
+    }
+    if (quoted) throw new Error("Dấu ngoặc kép chưa đóng.");
+    finishRow();
+    return rows;
+}
+
+async function readBatchFile(file) {
+    const ext = file.name.split(".").pop().toLowerCase();
+    if (ext === "csv" || ext === "txt") {
+        const text = (await file.text()).replace(/^\uFEFF/, "");
+        const first = text.split(/\r?\n/).find(line => line.trim()) || "";
+        return parseDelimited(text, ext === "txt" && first.includes("\t") ? "\t" : ",");
+    }
+    if (ext === "xlsx" || ext === "xls") {
+        if (!window.XLSX) throw new Error("Chưa tải được thư viện đọc Excel. Vui lòng thử lại hoặc dùng CSV.");
+        const workbook = window.XLSX.read(await file.arrayBuffer(), { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        if (!sheet) throw new Error("Không tìm thấy trang tính.");
+        return window.XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "", blankrows: false, raw: true });
+    }
+    throw new Error("Định dạng hỗ trợ: CSV, TXT, XLSX và XLS.");
+}
+
+function parseBatchRows(raw, needLabels) {
+    if (raw.length < 2) throw new Error("File cần có tiêu đề và ít nhất một mẫu.");
+    if (raw.length - 1 > batchLimit) throw new Error(`Tối đa ${batchLimit} mẫu mỗi lần.`);
+    const headers = raw[0].map(value => String(value ?? "").trim().toLowerCase());
+    if (new Set(headers).size !== headers.length) throw new Error("File có tên cột trùng nhau.");
+    const positions = batchFeatureNames.map(name => headers.indexOf(name));
+    const missing = batchFeatureNames.filter((_, index) => positions[index] < 0);
+    if (missing.length) throw new Error("Thiếu cột: " + missing.join(", "));
+    const labelColumn = headers.indexOf("label");
+    if (needLabels && labelColumn < 0) throw new Error("File đã có nhãn cần cột label với giá trị 0 hoặc 1.");
+
+    const labels = needLabels ? [] : null;
+    const samples = raw.slice(1).map((row, index) => {
+        const line = index + 2;
+        if (row.length !== headers.length) throw new Error(`Dòng ${line} sai số cột.`);
+        const entries = positions.map((position, featureIndex) => {
+            const value = String(row[position] ?? "").trim();
+            const number = Number(value);
+            const feature = batchFeatureNames[featureIndex];
+            if (!value || !Number.isFinite(number)) throw new Error(`Dòng ${line}, cột ${feature} phải là số.`);
+            return [feature, number];
+        });
+        if (labels) {
+            const value = String(row[labelColumn] ?? "").trim();
+            if (value !== "0" && value !== "1") throw new Error(`Dòng ${line}, cột label phải là 0 hoặc 1.`);
+            labels.push(Number(value));
+        }
+        return Object.fromEntries(entries);
+    });
+    return { samples, labels };
+}
+
+async function updateBatchInput() {
+    const revision = ++readRevision;
+    batchFile = batchSession = undefined;
+    runButton.disabled = true;
+    getBatchElement("batchResults").hidden = true;
+    const file = fileInput.files[0];
+    getBatchElement("batchFileName").textContent = file?.name || "Chọn file";
+    if (!file) { batchMessage("Chưa chọn file."); return; }
+    batchMessage("Đang đọc file…");
+    try {
+        if (file.size > 2_000_000) throw new Error("File vượt quá 2 MB.");
+        const raw = await readBatchFile(file);
+        if (revision !== readRevision) return;
+        batchFile = { ...parseBatchRows(raw, labeled), filename: file.name };
+        batchMessage(`Đã đọc ${batchFile.samples.length} mẫu.`);
+        runButton.disabled = false;
+    } catch (error) {
+        if (revision === readRevision) batchMessage(error.message);
+    }
+}
+
+function setBatchMode(nextMode) {
+    if (labeled === nextMode) return;
+    labeled = nextMode;
+    labeledMode.setAttribute("aria-pressed", String(labeled));
+    unlabeledMode.setAttribute("aria-pressed", String(!labeled));
+    getBatchElement("batchModeHelp").textContent = labeled
+        ? "File cần 30 đặc trưng WDBC và cột label: 0 là ác tính, 1 là lành tính."
+        : "File cần đủ 30 cột đặc trưng WDBC.";
+    getBatchElement("downloadTemplate").href = labeled ? "breast-cancer-mau-co-nhan.csv" : "breast-cancer-mau-20-dong.csv";
+    updateBatchInput();
+}
+
+function renderBatchMetrics(kernel) {
+    const run = batchSession.results.find(result => result.kernel === kernel);
+    const summary = BatchResults.summarize(run, batchSession.labels);
+    const metrics = summary.evaluation
+        ? [["Tổng số mẫu", batchSession.sampleCount], ["Đúng", summary.evaluation.correct],
+           ["Sai", summary.evaluation.incorrect], ["Tỷ lệ khớp", BatchResults.percent(summary.evaluation.accuracy)]]
+        : [["Tổng số mẫu", batchSession.sampleCount], ["Ác tính", summary.malignant],
+           ["Lành tính", summary.benign], ["Thời gian yêu cầu", `${requestElapsed.toFixed(1)} ms`]];
+    getBatchElement("batchMetrics").replaceChildren(...metrics.map(([text, value], index) => {
+        const card = BatchResults.element("div", undefined, `research-metric research-metric-${index + 1}`);
+        card.append(BatchResults.element("span", text), BatchResults.element("strong", value));
+        return card;
+    }));
+    BatchResults.renderComparison(getBatchElement("batchComparison"), batchSession, kernel);
+}
+
+function cacheBatchSession(session, synced) {
+    const key = getUserHistoryKey();
+    const history = JSON.parse(localStorage.getItem(key) || "[]");
+    const { samples, labels, results, ...summary } = session;
+    const cached = synced ? { ...summary, cloudDetails: true } : session;
+    const records = Array.isArray(history) ? history : [];
+    localStorage.setItem(key, JSON.stringify([cached, ...records].slice(0, 200)));
+}
+
+async function saveBatchSession(session) {
+    try {
+        await window.bcSaveCloudSession(session);
+    } catch (error) {
+        try {
+            cacheBatchSession(session, false);
+            return `Đã phân tích ${session.sampleCount} mẫu và lưu trên trình duyệt. Chưa đồng bộ: ${error.message}`;
+        } catch {
+            return `Đã phân tích ${session.sampleCount} mẫu. Chưa lưu được lịch sử. Bạn có thể xuất kết quả CSV.`;
+        }
+    }
+    try { cacheBatchSession(session, true); } catch { /* Lịch sử vẫn có trên máy chủ. */ }
+    return `Đã phân tích ${session.sampleCount} mẫu và lưu vào lịch sử.`;
+}
+
+fileInput.onchange = updateBatchInput;
+labeledMode.onclick = () => setBatchMode(true);
+unlabeledMode.onclick = () => setBatchMode(false);
+runButton.onclick = async () => {
+    if (!batchFile) return;
+    const kernels = kernelInputs.filter(input => input.checked).map(input => input.value);
+    if (!kernels.length) { batchMessage("Chọn ít nhất một kernel."); return; }
+
+    const controls = [fileInput, runButton, labeledMode, unlabeledMode, ...kernelInputs];
+    controls.forEach(input => { input.disabled = true; });
+    getBatchElement("batchResults").hidden = true;
+    batchMessage("Đang phân tích…");
+    const started = performance.now();
+    try {
+        const { samples, labels, filename } = batchFile;
+        const response = await fetch(BREASTCARE_API + "/predict/batch/compare", {
+            method: "POST", headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ samples, kernels, labels })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(typeof data.detail === "string" ? data.detail : `Yêu cầu thất bại (${response.status}).`);
+        requestElapsed = performance.now() - started;
+        batchSession = {
+            id: `batch_${crypto.randomUUID()}`, type: "batch", analyzedAt: new Date().toISOString(),
+            filename, sampleCount: samples.length, kernels, samples, labels, results: data.results,
+            summary: data.results.map(run => BatchResults.summarize(run, labels))
+        };
+        const initialKernel = batchSession.results.some(run => run.kernel === "RBF") ? "RBF" : batchSession.results[0].kernel;
+        BatchResults.renderDetails(getBatchElement("batchPreview"), batchSession, { activeKernel: initialKernel, onKernel: renderBatchMetrics });
+        renderBatchMetrics(initialKernel);
+        getBatchElement("batchResults").hidden = false;
+        getBatchElement("batchComparison").hidden = batchSession.results.length < 2;
+        batchMessage(await saveBatchSession(batchSession));
+    } catch (error) {
+        batchMessage(`Không thể phân tích: ${error.message}`);
+    } finally {
+        controls.forEach(input => { input.disabled = false; });
+    }
+};
+
+function csvCell(value) {
+    if (typeof value === "number") return String(value);
+    const text = String(value ?? "");
+    const safe = /^[\s]*[=+@-]/.test(text) ? "\t" + text : text;
+    return /[",\n\r\t]/.test(safe) ? '"' + safe.replace(/"/g, '""') + '"' : safe;
+}
+
+getBatchElement("exportBatch").onclick = () => {
+    if (!batchSession) return;
+    const { samples, labels, results } = batchSession;
+    const columns = results.flatMap(({ kernel }) => [
+        `${kernel}_class`, `${kernel}_label`, `${kernel}_malignant`, `${kernel}_benign`, ...(labels ? [`${kernel}_match`] : [])
+    ]);
+    const rows = samples.map((sample, index) => [
+        ...batchFeatureNames.map(name => sample[name]), ...(labels ? [labels[index]] : []),
+        ...results.flatMap(run => {
+            const row = run.predictions[index];
+            return [row.predicted_class, row.predicted_label, row.probability_malignant, row.probability_benign,
+                ...(labels ? [labels[index] === row.predicted_class ? "Đúng" : "Sai"] : [])];
+        })
+    ]);
+    const header = [...batchFeatureNames, ...(labels ? ["label"] : []), ...columns];
+    const csv = "\uFEFF" + [header, ...rows].map(row => row.map(csvCell).join(",")).join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "breastcare-ket-qua.csv";
+    anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+};

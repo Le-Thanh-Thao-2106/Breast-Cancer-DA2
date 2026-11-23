@@ -1,8 +1,8 @@
 <!doctype html><html lang="vi"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>So sánh SVM | Breast-Cancer SVM</title><link rel="stylesheet" href="style.css"><link rel="stylesheet" href="modern.css">
-<link rel="stylesheet" href="studio.css"><link rel="stylesheet" href="compact.css"><link rel="stylesheet" href="upgrade.css"></head><body><div class="app-container"><aside class="sidebar"><div class="brand"><div class="brand-icon">✚</div><div><h2>Breast-Cancer</h2><span>Medical AI · Research</span></div></div><div class="menu-label">KHÔNG GIAN LÀM VIỆC</div><nav class="sidebar-menu">
+<link rel="stylesheet" href="studio.css"><link rel="stylesheet" href="compact.css"><link rel="stylesheet" href="upgrade.css"><link rel="stylesheet" href="research-layout.css"></head><body class="bc-research-page bc-page-compare"><div class="app-container"><aside class="sidebar"><div class="brand"><div class="brand-icon">✚</div><div><h2>Breast-Cancer</h2><span>Medical AI · Research</span></div></div><div class="menu-label">KHÔNG GIAN LÀM VIỆC</div><nav class="sidebar-menu">
 <a href="index.html" class="menu-item">◫ &nbsp; Tổng quan</a>
 <a href="analysis.html" class="menu-item">⌕ &nbsp; Phân tích một mẫu</a>
-<a href="batch.html" class="menu-item">▦ &nbsp; Phân tích file CSV</a>
+<a href="batch.html" class="menu-item">▦ &nbsp; Phân tích file</a>
 <a href="history.html" class="menu-item">▤ &nbsp; Lịch sử phân tích</a>
 <a href="statistics.html" class="menu-item">◴ &nbsp; Thống kê cá nhân</a>
 <div class="menu-label">THÔNG TIN</div>
@@ -11,7 +11,7 @@
 <a href="model.html" class="menu-item">◇ &nbsp; Mô hình SVM</a>
 <a href="profile.html" class="menu-item">♙ &nbsp; Tài khoản của tôi</a>
 <a href="author.html" class="menu-item">✧ &nbsp; Tác giả & Hướng dẫn</a>
-</nav><div class="sidebar-bottom"><div class="user-profile"><div class="avatar">ID</div><div class="user-info"><strong id="ssoUserName">Người dùng</strong><span id="ssoUserEmail">BreastCare</span></div></div><button class="sidebar-logout" id="ssoLogoutBtn">Đăng xuất</button></div></aside><main class="main-content"><header class="topbar"><div><span class="breadcrumb">Breast-Cancer / So sánh SVM</span><h2>So sánh SVM</h2></div><div class="topbar-right"><span class="status">● Nền tảng nghiên cứu</span></div></header><section class="dashboard"><div class="hero-new"><div><div class="eyebrow">SVM BENCHMARK</div><h1>So sánh bốn kernel SVM</h1><p>Đánh giá Linear, RBF, Polynomial và Sigmoid trên cùng bộ dữ liệu WDBC và phép chia train/test. Các chỉ số được tính trực tiếp trên backend.</p></div></div>
+</nav><div class="sidebar-bottom"><div class="user-profile"><div class="avatar">ID</div><div class="user-info"><strong id="ssoUserName">Người dùng</strong><span id="ssoUserEmail">BreastCare</span></div></div><button class="sidebar-logout" id="ssoLogoutBtn">Đăng xuất</button></div></aside><main class="main-content"><header class="topbar"><div><span class="breadcrumb">Breast-Cancer / So sánh SVM</span><h2>So sánh SVM</h2></div><div class="topbar-right"><span class="status">● Nền tảng nghiên cứu</span></div></header><section class="dashboard"><div class="hero-new research-benchmark-hero"><div><div class="eyebrow">SVM BENCHMARK</div><h1>So sánh bốn kernel SVM</h1><p>Linear, RBF, Polynomial và Sigmoid trên cùng tập kiểm thử WDBC.</p></div></div>
 <div class="content-card"><h3>Thiết lập thực nghiệm</h3><p id="benchmarkSetup">Đang kết nối API...</p><button type="button" class="primary-button" id="loadBenchmark">Chạy / xem kết quả so sánh</button><p class="bc-inline-message" id="benchmarkMessage" role="status"></p><div id="benchmarkTable" class="table-scroll"></div></div>
 <div class="content-card"><h3>So sánh Accuracy</h3><div id="benchmarkBars"></div></div>
 <div class="content-card"><h3>Confusion Matrix</h3><p>Hàng là nhãn thực tế, cột là nhãn dự đoán; 0 = Malignant, 1 = Benign.</p><div id="benchmarkConfusion"></div></div>

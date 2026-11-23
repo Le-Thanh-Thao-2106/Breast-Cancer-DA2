@@ -10,9 +10,9 @@
     <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="modern.css">
 <link rel="stylesheet" href="studio.css">
-<link rel="stylesheet" href="compact.css"><link rel="stylesheet" href="upgrade.css"></head>
+<link rel="stylesheet" href="compact.css"><link rel="stylesheet" href="upgrade.css"><link rel="stylesheet" href="research-layout.css"></head>
 
-<body>
+<body class="bc-research-page bc-page-history">
 
 <div class="app-container">
 
@@ -32,7 +32,7 @@
         <nav class="sidebar-menu">
 <a href="index.html" class="menu-item">◫ &nbsp; Tổng quan</a>
 <a href="analysis.html" class="menu-item">⌕ &nbsp; Phân tích một mẫu</a>
-<a href="batch.html" class="menu-item">▦ &nbsp; Phân tích file CSV</a>
+<a href="batch.html" class="menu-item">▦ &nbsp; Phân tích file</a>
 <a href="history.html" class="menu-item">▤ &nbsp; Lịch sử phân tích</a>
 <a href="statistics.html" class="menu-item">◴ &nbsp; Thống kê cá nhân</a>
 <div class="menu-label">THÔNG TIN</div>
@@ -283,10 +283,12 @@
 <script src="user-storage.js"></script>
 
 <!-- Kết nối lịch sử với Supabase -->
-<script src="cloud-history.js"></script>
+<script src="cloud-history.js?v=batch-600"></script>
+<script src="features-vi.js"></script>
+<script src="batch-results.js"></script>
 
 <!-- Hiển thị lịch sử phân tích -->
-<script src="history.js"></script>
+<script src="history.js?v=batch-600"></script>
 
 <script src="navigation.js"></script>
 <script src="theme.js"></script>

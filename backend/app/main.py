@@ -7,9 +7,9 @@ from fastapi.exception_handlers import request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
-from psycopg.errors import UniqueViolation
+from psycopg.errors import CheckViolation, UniqueViolation
 from psycopg.types.json import Jsonb
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, StrictInt
 from .accounts import database, identity, identity_origin, require_admin, require_browser_origin, router as account_router, web_origin
 
 
@@ -18,6 +18,8 @@ from .accounts import database, identity, identity_origin, require_admin, requir
 # =========================
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+MAX_BATCH_SAMPLES = 600
+HISTORY_BATCH_MIGRATION = BASE_DIR / 'supabase_batch_600.sql'
 
 MODEL_PATH = BASE_DIR / "artifacts" / "breast_cancer_svm.joblib"
 METADATA_PATH = BASE_DIR / "artifacts" / "metadata.json"
@@ -166,8 +168,8 @@ class BatchPredictionRequest(BaseModel):
 
 @app.post("/predict/batch")
 def predict_batch(request: BatchPredictionRequest):
-    if not 1 <= len(request.samples) <= 200:
-        raise HTTPException(status_code=422, detail="Provide 1 to 200 samples.")
+    if not 1 <= len(request.samples) <= MAX_BATCH_SAMPLES:
+        raise HTTPException(status_code=422, detail=f"Provide 1 to {MAX_BATCH_SAMPLES} samples.")
     vectors = [build_vector(sample) for sample in request.samples]
     X = np.vstack(vectors)
     predictions = model.predict(X)
@@ -243,8 +245,14 @@ class CompareRequest(BaseModel):
     kernels: list[str]
 
 class CompareBatchRequest(BaseModel):
-    samples: list[dict[str,float]]
+    samples: list[dict[str, float]] = Field(min_length=1, max_length=MAX_BATCH_SAMPLES)
     kernels: list[str]
+    labels: list[StrictInt] | None = Field(default=None, max_length=MAX_BATCH_SAMPLES)
+
+
+def validate_batch_labels(labels, sample_count):
+    if labels is not None and (len(labels) != sample_count or any(label not in (0, 1) for label in labels)):
+        raise HTTPException(422, 'Cần một nhãn 0 hoặc 1 cho mỗi mẫu trong file.')
 
 def _validate_kernels(kernels):
     if not kernels or len(kernels)>4 or len(set(kernels))!=len(kernels) or any(k not in ('Linear','RBF','Polynomial','Sigmoid') for k in kernels):
@@ -273,9 +281,14 @@ def predict_compare(req:CompareRequest):
 
 @app.post('/predict/batch/compare')
 def predict_batch_compare(req:CompareBatchRequest):
-    if not 1<=len(req.samples)<=200:
-        raise HTTPException(status_code=422,detail='Chọn từ 1 đến 200 mẫu.')
-    return _compare_matrix(np.vstack([build_vector(x) for x in req.samples]),req.kernels)
+    validate_batch_labels(req.labels, len(req.samples))
+    result = _compare_matrix(np.vstack([build_vector(sample) for sample in req.samples]), req.kernels)
+    if req.labels is not None:
+        for run in result['results']:
+            correct = sum(row['predicted_class'] == label for row, label in zip(run['predictions'], req.labels))
+            run['evaluation'] = {'correct': correct, 'incorrect': len(req.labels) - correct,
+                                 'accuracy': correct / len(req.labels)}
+    return result
 
 @app.get('/admin/overview')
 def admin_overview(user=Depends(identity)):
@@ -290,10 +303,12 @@ class HistorySession(BaseModel):
     type: str
     analyzedAt: str
     filename: str = Field(default='', max_length=255)
-    sampleCount: int = Field(ge=1, le=200)
+    sampleCount: int = Field(ge=1, le=MAX_BATCH_SAMPLES)
     kernels: list[str]
     summary: list[dict] | dict = Field(default_factory=list)
     results: list[dict] | dict = Field(default_factory=list)
+    samples: list[dict[str, float]] | None = Field(default=None, max_length=MAX_BATCH_SAMPLES)
+    labels: list[StrictInt] | None = Field(default=None, max_length=MAX_BATCH_SAMPLES)
 
 
 @app.post('/history/sessions', dependencies=[Depends(require_browser_origin)])
@@ -328,7 +343,7 @@ def create_session(
                 detail='Dữ liệu phân tích Batch không hợp lệ.'
             )
         if len(session.results) != len(session.kernels) or any(
-            not isinstance(r, dict)
+            not isinstance(r.get('predictions'), list)
             or len(r.get('predictions', [])) != session.sampleCount
             for r in session.results
         ):
@@ -337,29 +352,61 @@ def create_session(
                 detail='Số mẫu/kernel không khớp.'
             )
 
+        validate_batch_labels(session.labels, session.sampleCount)
+        if session.samples is not None:
+            if len(session.samples) != session.sampleCount:
+                raise HTTPException(422, 'Số dòng đặc trưng đã lưu không khớp với số mẫu.')
+            for sample in session.samples:
+                build_vector(sample)
+
+    details = {'results': session.results, 'analyzedAt': session.analyzedAt}
+    if session.samples is not None:
+        details['samples'] = session.samples
+    if session.labels is not None:
+        details['labels'] = session.labels
+
     try:
         with database() as db:
+            if session.sampleCount > 200:
+                db.execute(HISTORY_BATCH_MIGRATION.read_text(encoding='utf-8'))
             db.execute('''
                 insert into public.bc_analysis_sessions
                     (id, user_id, user_email, kind, filename, sample_count, kernels, summary, details)
                 values (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             ''', (session.id, user['sub'], user['email'], session.type, session.filename,
                   session.sampleCount, session.kernels, Jsonb(session.summary),
-                  Jsonb({'results': session.results, 'analyzedAt': session.analyzedAt})))
+                  Jsonb(details)))
     except UniqueViolation as exc:
         raise HTTPException(409, 'ID phiên phân tích đã tồn tại.') from exc
+    except CheckViolation as exc:
+        raise HTTPException(503, 'Cơ sở dữ liệu chưa áp dụng giới hạn lưu 600 mẫu.') from exc
 
     return {'saved': True, 'id': session.id}
 
 @app.get('/history/sessions')
-def list_sessions(user=Depends(identity)):
+def list_sessions(summary_only: bool = False, user=Depends(identity)):
     with database() as db:
         sessions = db.execute('''
-            select id, kind, created_at, filename, sample_count, kernels, summary, details
+            select id, kind, created_at, filename, sample_count, kernels, summary,
+                   case when %s and kind = 'batch'
+                        then jsonb_build_object('analyzedAt', details -> 'analyzedAt', 'summaryOnly', true)
+                        else details end as details
             from public.bc_analysis_sessions where user_id = %s
             order by created_at desc limit 200
-        ''', (user['sub'],)).fetchall()
+        ''', (summary_only, user['sub'])).fetchall()
     return {'sessions': sessions}
+
+
+@app.get('/history/sessions/{session_id}')
+def get_history_session(session_id: str, user=Depends(identity)):
+    with database() as db:
+        session = db.execute('''
+            select id, kind, created_at, filename, sample_count, kernels, summary, details
+            from public.bc_analysis_sessions where id = %s and user_id = %s
+        ''', (session_id, user['sub'])).fetchone()
+    if session is None:
+        raise HTTPException(404, 'Không tìm thấy phiên phân tích.')
+    return session
 
 
 @app.delete('/history/sessions/{session_id}', dependencies=[Depends(require_browser_origin)])

@@ -10,9 +10,9 @@
     <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="modern.css">
 <link rel="stylesheet" href="studio.css">
-<link rel="stylesheet" href="compact.css"><link rel="stylesheet" href="upgrade.css"></head>
+<link rel="stylesheet" href="compact.css"><link rel="stylesheet" href="upgrade.css"><link rel="stylesheet" href="research-layout.css"></head>
 
-<body>
+<body class="bc-research-page bc-page-analysis">
 
 <div class="app-container">
 
@@ -32,7 +32,7 @@
         <nav class="sidebar-menu">
 <a href="index.html" class="menu-item">◫ &nbsp; Tổng quan</a>
 <a href="analysis.html" class="menu-item">⌕ &nbsp; Phân tích một mẫu</a>
-<a href="batch.html" class="menu-item">▦ &nbsp; Phân tích file CSV</a>
+<a href="batch.html" class="menu-item">▦ &nbsp; Phân tích file</a>
 <a href="history.html" class="menu-item">▤ &nbsp; Lịch sử phân tích</a>
 <a href="statistics.html" class="menu-item">◴ &nbsp; Thống kê cá nhân</a>
 <div class="menu-label">THÔNG TIN</div>
@@ -71,139 +71,41 @@
         <!-- ANALYSIS CONTENT -->
         <section class="dashboard">
 
-            <div class="welcome-section">
+            <header class="research-hero"><h1>Phân tích một mẫu</h1></header>
 
-                <div>
-                    <span class="welcome-tag">
-                        BREAST-CANCER RESEARCH STUDIO
-                    </span>
+            <section class="content-card research-kernel-bar" aria-labelledby="kernelTitle">
+                <h3 id="kernelTitle">Kernel</h3>
+                <div class="kernel-options" id="kernelOptions">
+                    <label><input type="checkbox" value="Linear"> Linear</label>
+                    <label><input type="checkbox" value="RBF" checked> RBF</label>
+                    <label><input type="checkbox" value="Polynomial"> Polynomial</label>
+                    <label><input type="checkbox" value="Sigmoid"> Sigmoid</label>
+                </div>
+            </section>
 
-                    <h1>Phân tích dữ liệu tế bào học</h1>
-
-                    <p>
-                        Nhập 30 đặc trưng của mẫu tế bào để trải nghiệm
-                        mô hình phân loại Support Vector Machine (SVM).
-                    </p>
+            <form id="predictionForm" novalidate>
+                <div class="sample-picker content-card">
+                    <label for="sampleChoice">Mẫu nghiên cứu</label>
+                    <select id="sampleChoice"></select>
+                    <button class="primary-button" type="button" id="fillResearchSample">Điền dữ liệu mẫu</button>
                 </div>
 
-                <div class="welcome-icon">♡</div>
-
-            </div>
-
-
-            <!-- MODEL INFORMATION -->
-            <div class="content-card">
-
-                <div class="card-heading">
-                    <div>
-                        <h3>Thông tin đầu vào</h3>
-
-                        <p>
-                            Dữ liệu gồm 30 đặc trưng được chia thành
-                            ba nhóm.
-                        </p>
+                <section class="content-card research-feature-card" aria-label="30 đặc trưng">
+                    <div class="research-tabs" role="tablist" aria-label="Nhóm đặc trưng">
+                        <button type="button" id="meanTab" role="tab" aria-controls="meanFeatures" aria-selected="true">Mean (Trung bình)</button>
+                        <button type="button" id="errorTab" role="tab" aria-controls="errorFeatures" aria-selected="false" tabindex="-1">Error (Sai số)</button>
+                        <button type="button" id="worstTab" role="tab" aria-controls="worstFeatures" aria-selected="false" tabindex="-1">Worst (Xấu nhất)</button>
                     </div>
-
-                    <div class="card-symbol">⌕</div>
-                </div>
-
-                <div class="model-info">
-                    <span>Thuật toán</span>
-                    <strong>Support Vector Machine</strong>
-                </div>
-
-                <div class="model-info">
-                    <span>Kernel</span>
-                    <strong>RBF</strong>
-                </div>
-
-                <div class="model-info">
-                    <span>Số đặc trưng</span>
-                    <strong>30 Features</strong>
-                </div>
-
-            </div>
-
-
-            <section class="content-card bc-kernel-select"><h3>Chọn kernel để phân tích</h3><p>Chọn một hoặc nhiều kernel. Khi chọn từ hai kernel, hệ thống sẽ so sánh dự đoán và thời gian suy luận.</p><div class="kernel-options" id="kernelOptions"><label><input type="checkbox" value="Linear"> Linear</label><label><input type="checkbox" value="RBF" checked> RBF</label><label><input type="checkbox" value="Polynomial"> Polynomial</label><label><input type="checkbox" value="Sigmoid"> Sigmoid</label></div></section><!-- PREDICTION FORM -->
-            <form id="predictionForm">
-
-                <!-- MEAN FEATURES -->
-                <section class="content-card feature-section bc-feature-fold">
-
-                    <div class="card-heading">
-                        <div>
-                            <h3>01. Mean Features</h3>
-
-                            <p>
-                                Các đặc trưng trung bình của tế bào.
-                            </p>
-                        </div>
+                    <div id="meanFeatures" class="feature-grid" role="tabpanel" aria-labelledby="meanTab"></div>
+                    <div id="errorFeatures" class="feature-grid" role="tabpanel" aria-labelledby="errorTab" hidden></div>
+                    <div id="worstFeatures" class="feature-grid" role="tabpanel" aria-labelledby="worstTab" hidden></div>
+                    <div class="analysis-actions">
+                        <button type="submit" id="predictButton" class="primary-button">Phân tích</button>
+                        <button type="reset" class="secondary-button">Xóa dữ liệu</button>
                     </div>
-
-                    <div id="meanFeatures" class="feature-grid"></div>
-
+                    <p role="status" id="featureMessage"></p>
                 </section>
-
-
-                <!-- ERROR FEATURES -->
-                <section class="content-card feature-section bc-feature-fold">
-
-                    <div class="card-heading">
-                        <div>
-                            <h3>02. Error Features</h3>
-
-                            <p>
-                                Các đặc trưng sai số của phép đo.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div id="errorFeatures" class="feature-grid"></div>
-
-                </section>
-
-
-                <!-- WORST FEATURES -->
-                <section class="content-card feature-section bc-feature-fold">
-
-                    <div class="card-heading">
-                        <div>
-                            <h3>03. Worst Features</h3>
-
-                            <p>
-                                Các giá trị đặc trưng lớn nhất của tế bào.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div id="worstFeatures" class="feature-grid"></div>
-
-                </section>
-
-
-                <!-- ACTION BUTTONS -->
-                <div class="analysis-actions">
-
-                    <button
-                        type="submit"
-                        id="predictButton"
-                        class="primary-button"
-                    >
-                        Phân loại
-                    </button>
-
-                    <button
-                        type="reset"
-                        class="secondary-button"
-                    >
-                        Xóa dữ liệu
-                    </button>
-
-                </div>
-
             </form>
-
 
             <!-- RESULT -->
             <section class="content-card result-card">
@@ -214,7 +116,7 @@
 
                     <p class="empty-result">
                         Chưa có kết quả. Vui lòng nhập dữ liệu
-                        và nhấn "Phân loại".
+                        và nhấn "Phân tích".
                     </p>
 
                 </div>
@@ -260,8 +162,9 @@
 <script src="cloud-history.js"></script>
 
 <!-- Xử lý phân tích một mẫu -->
-<script src="script.js"></script>
-<script src="feature-fold.js"></script>
+<script src="research-samples.js"></script>
+<script src="script.js?v=research-layout"></script>
+
 <script src="navigation.js"></script>
 <script src="theme.js"></script>
 </body>

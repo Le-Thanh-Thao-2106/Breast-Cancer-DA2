@@ -1,9 +1,26 @@
 from fastapi.testclient import TestClient
+from sklearn.datasets import load_breast_cancer
 from app.accounts import identity_origin, web_origin
 from app.main import app
 
 
 client = TestClient(app)
+
+
+def test_batch_limit_and_label_comparison():
+    data = load_breast_cancer()
+    sample = dict(zip(data.feature_names, data.data[0]))
+    request = {'samples': [sample] * 600, 'kernels': ['RBF'], 'labels': [0, 1] * 300}
+    response = client.post('/predict/batch/compare', json=request)
+    assert response.status_code == 200
+    result = response.json()['results'][0]
+    assert len(result['predictions']) == 600
+    assert result['evaluation'] == {'correct': 300, 'incorrect': 300, 'accuracy': 0.5}
+
+    invalid_size = client.post('/predict/batch/compare', json={**request, 'samples': [sample] * 601})
+    invalid_label = client.post('/predict/batch/compare', json={**request, 'samples': [sample], 'labels': [2]})
+    assert invalid_size.status_code == 422
+    assert invalid_label.status_code == 422
 
 
 def test_health():

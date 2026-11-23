@@ -20,3 +20,5 @@ order by created_at desc;
 ```
 
 Danh sách **Authentication → Users** chỉ hiển thị các tài khoản do Supabase Auth quản lý. Mở `https://breast-cancer-da2-api.onrender.com/health` để kiểm tra Web Service, rồi thử đăng ký và đăng nhập tại Static Site để kiểm tra kết nối PostgreSQL.
+
+Phân tích file hỗ trợ CSV, TXT, XLSX và XLS với tối đa 600 mẫu. Backend cập nhật ràng buộc lưu lịch sử khi lưu phiên trên 200 mẫu. Nếu tài khoản trong `DATABASE_URL` thiếu quyền thay đổi bảng, chạy `backend/supabase_batch_600.sql` một lần trong SQL Editor của Supabase DA2. Phiên cũ vẫn đọc được, trong khi đầu vào 30 đặc trưng được lưu cho các phiên phân tích file mới.

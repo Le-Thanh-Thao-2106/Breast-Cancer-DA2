@@ -47,7 +47,7 @@ window.bcSaveCloudSession = async function (session) {
 
 window.bcLoadCloudSessions = async function () {
 
-    const res = await fetchBreastCare(BC_HISTORY_API);
+    const res = await fetchBreastCare(BC_HISTORY_API + "?summary_only=true");
 
     if (!res.ok) {
         throw new Error(
@@ -60,6 +60,12 @@ window.bcLoadCloudSessions = async function () {
     console.log("Lịch sử tải từ Supabase:", data);
 
     return data;
+};
+
+window.bcLoadCloudSession = async function (sessionId) {
+    const response = await fetchBreastCare(`${BC_HISTORY_API}/${encodeURIComponent(sessionId)}`);
+    if (!response.ok) throw new Error(`Không tải được chi tiết phiên (${response.status}).`);
+    return response.json();
 };
 
 

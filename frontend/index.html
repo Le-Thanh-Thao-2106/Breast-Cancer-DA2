@@ -10,9 +10,9 @@
     <link rel="stylesheet" href="style.css">
 <link rel="stylesheet" href="modern.css">
 <link rel="stylesheet" href="studio.css">
-<link rel="stylesheet" href="compact.css"><link rel="stylesheet" href="upgrade.css"></head>
+<link rel="stylesheet" href="compact.css"><link rel="stylesheet" href="upgrade.css"><link rel="stylesheet" href="research-layout.css"></head>
 
-<body>
+<body class="bc-research-page bc-page-index">
 
 <div class="app-container">
 
@@ -32,7 +32,7 @@
         <nav class="sidebar-menu">
 <a href="index.html" class="menu-item">◫ &nbsp; Tổng quan</a>
 <a href="analysis.html" class="menu-item">⌕ &nbsp; Phân tích một mẫu</a>
-<a href="batch.html" class="menu-item">▦ &nbsp; Phân tích file CSV</a>
+<a href="batch.html" class="menu-item">▦ &nbsp; Phân tích file</a>
 <a href="history.html" class="menu-item">▤ &nbsp; Lịch sử phân tích</a>
 <a href="statistics.html" class="menu-item">◴ &nbsp; Thống kê cá nhân</a>
 <div class="menu-label">THÔNG TIN</div>
@@ -67,10 +67,6 @@
 
         <!-- DASHBOARD -->
         <section class="dashboard">
-            <div class="insight-strip"><span class="insight-kicker">TRUNG TÂM PHÂN TÍCH</span><h2>Breast-Cancer Research Studio</h2><p>Chọn cách phân tích phù hợp, theo dõi dữ liệu riêng của từng tài khoản và xuất kết quả để báo cáo.</p><div class="insight-actions"><a href="analysis.html">◈ Phân tích một mẫu</a><a href="batch.html">▦ Phân tích nhiều mẫu CSV</a><a href="compare.html">▥ So sánh 4 kernel</a><a href="statistics.html">◴ Xem thống kê</a></div></div>
-            <section class="studio-section" aria-label="Lối tắt nghiên cứu"><h3>Không gian nghiên cứu</h3><p>Ba thao tác thường dùng — bắt đầu nhanh mà không cần tìm trong menu.</p><div class="studio-actions"><a class="studio-tile" href="analysis.html"><span class="tile-icon">◎</span><b>Thử nghiệm một mẫu</b><small>Chọn mẫu dữ liệu minh họa hoặc nhập 30 đặc trưng để xem kết quả dự đoán.</small></a><a class="studio-tile" href="batch.html"><span class="tile-icon">▦</span><b>Phân tích dữ liệu CSV</b><small>Tải 20 dòng dữ liệu thử, chạy nhiều mẫu và xuất báo cáo kết quả.</small></a><a class="studio-tile" href="history.html"><span class="tile-icon">◷</span><b>Khám phá lịch sử</b><small>Tra cứu lại các thử nghiệm và theo dõi kết quả theo tài khoản SSO.</small></a></div></section>
-            <div class="distribution-card"><div><span class="insight-kicker">PHÂN BỐ KẾT QUẢ</span><h3>Tỷ lệ dự đoán trong lịch sử</h3><p id="distributionCaption">Chưa có kết quả để thống kê</p></div><div class="distribution-track" role="img" aria-label="Phân bố kết quả"><div id="distributionMalignant" class="distribution-malignant"></div><div id="distributionBenign" class="distribution-benign"></div></div><div class="distribution-legend"><span>● Malignant <strong id="distributionMalignantPct">0%</strong></span><span>● Benign <strong id="distributionBenignPct">0%</strong></span></div></div>
-
             <div class="welcome-section">
 
                 <div>
@@ -101,14 +97,14 @@
 
                 <div class="stat-card">
                     <div class="stat-icon purple">◈</div>
-                    <span>Malignant</span>
+                    <span>Ác tính</span>
                     <h2 id="malignantCount">0</h2>
                     <small>Kết quả phân loại lớp 0</small>
                 </div>
 
                 <div class="stat-card">
                     <div class="stat-icon green">◇</div>
-                    <span>Benign</span>
+                    <span>Lành tính</span>
                     <h2 id="benignCount">0</h2>
                     <small>Kết quả phân loại lớp 1</small>
                 </div>
@@ -172,13 +168,28 @@
 
                     <div class="model-info">
                         <span>Số đặc trưng</span>
-                        <strong>30 Features</strong>
+                        <strong>30 đặc trưng</strong>
                     </div>
 
                 </div>
 
             </div>
 
+
+            <section class="studio-section" aria-label="Lối tắt nghiên cứu">
+                <h3>Không gian nghiên cứu</h3>
+                <div class="studio-actions">
+                    <a class="studio-tile" href="analysis.html"><span class="tile-icon" aria-hidden="true">◎</span><span><b>Phân tích một mẫu</b><small>Điền dữ liệu mẫu hoặc nhập 30 đặc trưng.</small></span><span aria-hidden="true">→</span></a>
+                    <a class="studio-tile" href="batch.html"><span class="tile-icon" aria-hidden="true">▦</span><span><b>Phân tích file</b><small>Tải file và phân tích tới 600 mẫu.</small></span><span aria-hidden="true">→</span></a>
+                    <a class="studio-tile" href="history.html"><span class="tile-icon" aria-hidden="true">◷</span><span><b>Lịch sử phân tích</b><small>Xem lại kết quả và đầu vào đã lưu.</small></span><span aria-hidden="true">→</span></a>
+                </div>
+            </section>
+            <section class="distribution-card">
+                <h3>Phân bố kết quả phân tích</h3>
+                <div class="distribution-track" role="img" aria-label="Phân bố kết quả"><div id="distributionMalignant" class="distribution-malignant"></div><div id="distributionBenign" class="distribution-benign"></div></div>
+                <div class="distribution-legend"><span>● Ác tính <strong id="distributionMalignantPct">0%</strong></span><span>● Lành tính <strong id="distributionBenignPct">0%</strong></span></div>
+                <p id="distributionCaption">Chưa có kết quả để thống kê</p>
+            </section>
 
             <!-- NOTICE -->
             <div class="notice">
