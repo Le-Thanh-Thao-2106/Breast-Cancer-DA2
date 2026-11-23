@@ -207,8 +207,8 @@ function setBatchMode(nextMode) {
         ? "File cần 30 đặc trưng WDBC. Nhận cột label, target, target_label, diagnosis, nhãn hoặc loại. Nhãn 0 là ác tính, 1 là lành tính."
         : "File cần đủ 30 cột đặc trưng WDBC.";
     getBatchElement("downloadTemplate").href = labeled
-        ? "breast-cancer-mau-co-nhan.csv"
-        : "breast-cancer-mau-20-dong.csv";
+        ? "assets/samples/breast-cancer-mau-co-nhan.csv"
+        : "assets/samples/breast-cancer-mau-20-dong.csv";
     updateBatchInput();
 }
 
