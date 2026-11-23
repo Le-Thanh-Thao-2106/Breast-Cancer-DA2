@@ -1,5 +1,10 @@
 const batchLimit = 600;
 const batchFeatureNames = window.WDBC_FEATURE_NAMES;
+const labelHeaders = new Set(["label", "target", "target label", "diagnosis", "nhan", "loai"]);
+const labelValues = new Map([
+    ["0", 0], ["m", 0], ["malignant", 0], ["ac tinh", 0],
+    ["1", 1], ["b", 1], ["benign", 1], ["lanh tinh", 1]
+]);
 const getBatchElement = id => document.getElementById(id);
 const fileInput = getBatchElement("csvFile");
 const runButton = getBatchElement("runBatch");
@@ -50,7 +55,11 @@ async function readBatchFile(file) {
     if (ext === "csv" || ext === "txt") {
         const text = (await file.text()).replace(/^\uFEFF/, "");
         const first = text.split(/\r?\n/).find(line => line.trim()) || "";
-        return parseDelimited(text, ext === "txt" && first.includes("\t") ? "\t" : ",");
+        const separators = [",", ";", "\t"];
+        const separator = separators.reduce((best, candidate) =>
+            parseDelimited(first, candidate)[0]?.length > parseDelimited(first, best)[0]?.length ? candidate : best
+        );
+        return parseDelimited(text, separator);
     }
     if (ext === "xlsx" || ext === "xls") {
         if (!window.XLSX) throw new Error("Chưa tải được thư viện đọc Excel. Vui lòng thử lại hoặc dùng CSV.");
@@ -62,16 +71,46 @@ async function readBatchFile(file) {
     throw new Error("Định dạng hỗ trợ: CSV, TXT, XLSX và XLS.");
 }
 
+function normalizeBatchName(value) {
+    return String(value ?? "").normalize("NFD").replace(/\p{M}/gu, "")
+        .trim().toLowerCase().replace(/[\s_-]+/g, " ");
+}
+
+function readBatchLabel(row, columns, line) {
+    let label;
+    let source;
+    for (const { name, index } of columns) {
+        const value = String(row[index] ?? "").trim();
+        if (!value) continue;
+        const numeric = /^[01](?:[.,]0+)?$/.test(value) ? Number(value[0]) : undefined;
+        const next = numeric ?? labelValues.get(normalizeBatchName(value));
+        if (next === undefined) {
+            throw new Error(`Dòng ${line}, cột ${name}: dùng 0/1 hoặc malignant/benign.`);
+        }
+        if (label !== undefined && label !== next) {
+            throw new Error(`Dòng ${line}: nhãn ở cột ${source} và ${name} không khớp.`);
+        }
+        label = next;
+        source = name;
+    }
+    if (label === undefined) throw new Error(`Dòng ${line}: thiếu nhãn thật.`);
+    return label;
+}
+
 function parseBatchRows(raw, needLabels) {
     if (raw.length < 2) throw new Error("File cần có tiêu đề và ít nhất một mẫu.");
     if (raw.length - 1 > batchLimit) throw new Error(`Tối đa ${batchLimit} mẫu mỗi lần.`);
-    const headers = raw[0].map(value => String(value ?? "").trim().toLowerCase());
+    const headers = raw[0].map(normalizeBatchName);
     if (new Set(headers).size !== headers.length) throw new Error("File có tên cột trùng nhau.");
     const positions = batchFeatureNames.map(name => headers.indexOf(name));
     const missing = batchFeatureNames.filter((_, index) => positions[index] < 0);
     if (missing.length) throw new Error("Thiếu cột: " + missing.join(", "));
-    const labelColumn = headers.indexOf("label");
-    if (needLabels && labelColumn < 0) throw new Error("File đã có nhãn cần cột label với giá trị 0 hoặc 1.");
+    const labelColumns = needLabels ? headers.flatMap((name, index) =>
+        labelHeaders.has(name) ? [{ name: String(raw[0][index]).trim(), index }] : []
+    ) : [];
+    if (needLabels && !labelColumns.length) {
+        throw new Error("Không tìm thấy cột nhãn. Hỗ trợ label, target, target_label, diagnosis, nhãn hoặc loại.");
+    }
 
     const labels = needLabels ? [] : null;
     const samples = raw.slice(1).map((row, index) => {
@@ -84,14 +123,10 @@ function parseBatchRows(raw, needLabels) {
             if (!value || !Number.isFinite(number)) throw new Error(`Dòng ${line}, cột ${feature} phải là số.`);
             return [feature, number];
         });
-        if (labels) {
-            const value = String(row[labelColumn] ?? "").trim();
-            if (value !== "0" && value !== "1") throw new Error(`Dòng ${line}, cột label phải là 0 hoặc 1.`);
-            labels.push(Number(value));
-        }
+        if (labels) labels.push(readBatchLabel(row, labelColumns, line));
         return Object.fromEntries(entries);
     });
-    return { samples, labels };
+    return { samples, labels, labelColumns: labelColumns.map(column => column.name) };
 }
 
 async function updateBatchInput() {
@@ -108,7 +143,8 @@ async function updateBatchInput() {
         const raw = await readBatchFile(file);
         if (revision !== readRevision) return;
         batchFile = { ...parseBatchRows(raw, labeled), filename: file.name };
-        batchMessage(`Đã đọc ${batchFile.samples.length} mẫu.`);
+        const labelMessage = labeled ? ` Cột nhãn: ${batchFile.labelColumns.join(", ")}.` : "";
+        batchMessage(`Đã đọc ${batchFile.samples.length} mẫu.${labelMessage}`);
         runButton.disabled = false;
     } catch (error) {
         if (revision === readRevision) batchMessage(error.message);
@@ -121,7 +157,7 @@ function setBatchMode(nextMode) {
     labeledMode.setAttribute("aria-pressed", String(labeled));
     unlabeledMode.setAttribute("aria-pressed", String(!labeled));
     getBatchElement("batchModeHelp").textContent = labeled
-        ? "File cần 30 đặc trưng WDBC và cột label: 0 là ác tính, 1 là lành tính."
+        ? "File cần 30 đặc trưng WDBC. Nhận cột label, target, target_label, diagnosis, nhãn hoặc loại. Nhãn 0 là ác tính, 1 là lành tính."
         : "File cần đủ 30 cột đặc trưng WDBC.";
     getBatchElement("downloadTemplate").href = labeled ? "breast-cancer-mau-co-nhan.csv" : "breast-cancer-mau-20-dong.csv";
     updateBatchInput();
