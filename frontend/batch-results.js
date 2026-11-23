@@ -47,8 +47,14 @@ const BatchResults = (() => {
         const malignant = run.predictions.filter(row => row.predicted_class === 0).length;
         const result = { kernel: run.kernel, malignant, benign: run.predictions.length - malignant, elapsed_ms: run.elapsed_ms };
         if (labels) {
-            const correct = run.predictions.filter((row, index) => row.predicted_class === labels[index]).length;
-            result.evaluation = run.evaluation || { correct, incorrect: labels.length - correct, accuracy: correct / labels.length };
+            const incorrectByLabel = [0, 0];
+            run.predictions.forEach((row, index) => {
+                const actual = labels[index];
+                if (row.predicted_class !== actual) incorrectByLabel[actual]++;
+            });
+            const incorrect = incorrectByLabel[0] + incorrectByLabel[1];
+            const correct = run.predictions.length - incorrect;
+            result.evaluation = { correct, incorrect, accuracy: correct / run.predictions.length, incorrectByLabel };
         }
         return result;
     }
@@ -63,6 +69,9 @@ const BatchResults = (() => {
         }
 
         let page = 0;
+        let filter = "all";
+        let run = selected;
+        let groups;
         const bar = element("div", undefined, "research-result-toolbar");
         const picker = element("select");
         picker.setAttribute("aria-label", "Kernel để xem kết quả");
@@ -72,17 +81,67 @@ const BatchResults = (() => {
         heading.append(picker);
         bar.append(heading);
         const output = element("div");
+        const body = element("div", undefined, labels ? "research-labeled-results" : undefined);
+        const errors = element("div", undefined, "research-label-errors");
+        const filterButtons = [];
+
+        if (labels) {
+            const filters = element("div", undefined, "research-result-filters");
+            filters.setAttribute("role", "group");
+            filters.setAttribute("aria-label", "Lọc theo kết quả so với nhãn thật");
+            for (const [mode, title] of [["all", "Tất cả"], ["correct", "Đúng"], ["incorrect", "Sai"]]) {
+                const button = element("button", title);
+                button.type = "button";
+                button.onclick = () => {
+                    filter = mode;
+                    page = 0;
+                    filterButtons.forEach(({ button, mode }) => button.setAttribute("aria-pressed", String(mode === filter)));
+                    renderPage();
+                };
+                filterButtons.push({ button, mode, title });
+                filters.append(button);
+            }
+            bar.append(filters);
+            body.append(errors);
+        }
+        body.append(output);
+
+        function updateKernel() {
+            groups = { all: [], correct: [], incorrect: [] };
+            run.predictions.forEach((row, index) => {
+                groups.all.push(index);
+                if (labels) groups[row.predicted_class === labels[index] ? "correct" : "incorrect"].push(index);
+            });
+            if (!labels) return;
+            filterButtons.forEach(({ button, mode, title }) => {
+                button.textContent = `${title} · ${groups[mode].length}`;
+                button.setAttribute("aria-pressed", String(mode === filter));
+            });
+            const { incorrectByLabel } = summarize(run, labels).evaluation;
+            errors.replaceChildren(...["Ác tính → Lành tính", "Lành tính → Ác tính"].map((description, index) => {
+                const card = element("div", undefined, "research-label-error-card");
+                card.append(element("span", `Nhãn thật ${index} dự đoán sai`),
+                    element("strong", incorrectByLabel[index]), element("small", description));
+                return card;
+            }));
+        }
 
         function renderPage() {
-            const run = runs.find(item => item.kernel === picker.value);
             const first = page * pageSize;
-            const total = run.predictions.length;
+            const indexes = groups[filter];
+            const total = indexes.length;
+            if (!total) {
+                const empty = element("p", filter === "incorrect" ? "Kernel này không có mẫu dự đoán sai." : "Không có mẫu phù hợp.");
+                empty.setAttribute("role", "status");
+                output.replaceChildren(empty);
+                return;
+            }
             const headers = labels
                 ? ["STT", "Nhãn thật", "Dự đoán", "Ác tính", "Lành tính", "Đúng/Sai"]
                 : ["STT", "Dự đoán", "Ác tính", "Lành tính"];
             if (onInspect) headers.push("Đầu vào");
-            const rows = run.predictions.slice(first, first + pageSize).map((row, offset) => {
-                const index = first + offset;
+            const rows = indexes.slice(first, first + pageSize).map(index => {
+                const row = run.predictions[index];
                 const values = [index + 1];
                 if (labels) values.push(label(labels[index]));
                 values.push(label(row.predicted_class), percent(row.probability_malignant), percent(row.probability_benign));
@@ -114,34 +173,32 @@ const BatchResults = (() => {
         }
 
         picker.onchange = () => {
+            run = runs.find(item => item.kernel === picker.value);
             page = 0;
+            updateKernel();
             renderPage();
             onKernel?.(picker.value);
         };
-        target.replaceChildren(bar, output);
+        target.replaceChildren(bar, body);
+        updateKernel();
         renderPage();
     }
 
-    function renderComparison(target, session, activeKernel) {
+    function renderComparison(target, session) {
         const runs = session.results || [];
-        const reference = runs.find(run => run.kernel === activeKernel) || runs[0];
         const labels = session.labels;
         const summary = runs.length ? runs.map(run => summarize(run, labels)) : session.summary || [];
         const evaluate = Boolean(labels || summary.some(row => row.evaluation));
         const headers = evaluate
-            ? ["Kernel", "Đúng", "Sai", "Tỷ lệ khớp", "Suy luận (ms)"]
+            ? ["Kernel", "Đúng", "Tổng sai", "Sai nhãn 0", "Sai nhãn 1", "Tỷ lệ khớp", "Suy luận (ms)"]
             : ["Kernel", "Ác tính", "Lành tính", "Suy luận (ms)"];
-        if (reference) headers.push(`Khác ${reference.kernel}`);
         const rows = summary.map(row => {
             const elapsed = typeof row.elapsed_ms === "number" ? row.elapsed_ms.toFixed(3) : row.elapsed_ms;
-            const cells = evaluate
-                ? [row.kernel, row.evaluation?.correct, row.evaluation?.incorrect, percent(row.evaluation?.accuracy), elapsed]
+            const evaluation = row.evaluation;
+            return evaluate
+                ? [row.kernel, evaluation?.correct, evaluation?.incorrect, evaluation?.incorrectByLabel?.[0],
+                   evaluation?.incorrectByLabel?.[1], percent(evaluation?.accuracy), elapsed]
                 : [row.kernel, row.malignant, row.benign, elapsed];
-            if (reference) {
-                const run = runs.find(item => item.kernel === row.kernel);
-                cells.push(run.predictions.filter((item, index) => item.predicted_class !== reference.predictions[index]?.predicted_class).length);
-            }
-            return cells;
         });
         target.replaceChildren(element("h3", "So sánh các kernel đã chọn"), table(headers, rows));
     }

@@ -342,12 +342,10 @@ async function showDetail(id) {
         const resultHost = element("div");
         const summaryHost = element("div", undefined, "research-comparison");
         detailResult.append(resultHost, summaryHost);
-        const changeKernel = kernel => BatchResults.renderComparison(summaryHost, item, kernel);
         BatchResults.renderDetails(resultHost, item, {
-            onKernel: changeKernel,
             onInspect: item.samples?.length ? index => showBatchInput(item, index) : undefined
         });
-        changeKernel(item.results?.[0]?.kernel);
+        BatchResults.renderComparison(summaryHost, item);
         showBatchInput(item, 0);
         detailSection.scrollIntoView({ behavior: "smooth", block: "start" });
         return;

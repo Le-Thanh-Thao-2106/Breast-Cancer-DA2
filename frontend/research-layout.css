@@ -209,7 +209,32 @@ html[data-theme="dark"] .bc-research-page {
 .research-metric-3::before { content: "×"; background: #fbe5ec; color: #9e1840; }
 .research-metric-4::before { content: "◎"; }
 .research-metric strong { font-size: clamp(17px, 2vw, 26px); font-weight: 800; }
-.research-result-toolbar { margin-bottom: 12px; }
+.research-result-toolbar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-bottom: 12px; }
+.research-result-filters { display: flex; flex-wrap: wrap; gap: 6px; }
+.research-result-filters button {
+    padding: 6px 11px;
+    border: 1px solid var(--research-border);
+    border-radius: 999px;
+    background: var(--research-surface);
+    color: var(--research-text);
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+}
+.research-result-filters button[aria-pressed="true"] { background: #6235bb; border-color: #6235bb; color: #fff; }
+.research-labeled-results { display: grid; grid-template-columns: minmax(178px, 1fr) minmax(0, 3fr); gap: 12px; }
+.research-label-errors { display: grid; gap: 10px; align-content: start; }
+.research-label-error-card {
+    display: grid;
+    gap: 2px;
+    padding: 10px 13px;
+    border: 1px solid var(--research-border);
+    border-radius: 9px;
+    background: var(--research-surface);
+}
+.bc-research-page .research-label-error-card span { color: var(--research-text); font-weight: 700; }
+.bc-research-page .research-label-error-card strong { color: var(--research-accent); font-size: 25px; line-height: 1.2; }
+.bc-research-page .research-label-error-card small { color: var(--research-muted); }
 .research-result-toolbar select {
     min-width: 128px;
     padding: 7px 10px;
@@ -263,6 +288,8 @@ html[data-theme="dark"] .bc-research-page {
 @media (max-width: 960px) {
     .bc-page-analysis .research-feature-card .feature-group { grid-template-columns: 1fr; }
     .research-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .research-labeled-results { grid-template-columns: minmax(0, 1fr); }
+    .research-label-errors { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 750px) {
     .bc-research-page .app-container { flex-direction: column; }

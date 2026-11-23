@@ -176,7 +176,6 @@ function renderBatchMetrics(kernel) {
         card.append(BatchResults.element("span", text), BatchResults.element("strong", value));
         return card;
     }));
-    BatchResults.renderComparison(getBatchElement("batchComparison"), batchSession, kernel);
 }
 
 function cacheBatchSession(session, synced) {
@@ -233,6 +232,7 @@ runButton.onclick = async () => {
         const initialKernel = batchSession.results.some(run => run.kernel === "RBF") ? "RBF" : batchSession.results[0].kernel;
         BatchResults.renderDetails(getBatchElement("batchPreview"), batchSession, { activeKernel: initialKernel, onKernel: renderBatchMetrics });
         renderBatchMetrics(initialKernel);
+        BatchResults.renderComparison(getBatchElement("batchComparison"), batchSession);
         getBatchElement("batchResults").hidden = false;
         getBatchElement("batchComparison").hidden = batchSession.results.length < 2;
         batchMessage(await saveBatchSession(batchSession));
