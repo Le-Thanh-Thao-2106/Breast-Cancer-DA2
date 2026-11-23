@@ -22,6 +22,7 @@ let readRevision = 0;
 let batchFile;
 let batchSession;
 let requestElapsed = 0;
+let spreadsheetReader;
 
 function batchMessage(text) {
     getBatchElement("batchMessage").textContent = text;
@@ -58,6 +59,25 @@ function parseDelimited(text, separator) {
     return rows;
 }
 
+function loadSpreadsheetReader() {
+    if (!spreadsheetReader) {
+        spreadsheetReader = new Promise((resolve, reject) => {
+            const script = document.createElement("script");
+            script.src = "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
+            script.onload = () =>
+                window.XLSX
+                    ? resolve(window.XLSX)
+                    : reject(new Error("Không tìm thấy thư viện đọc Excel."));
+            script.onerror = () => reject(new Error("Không tải được thư viện đọc Excel."));
+            document.head.append(script);
+        }).catch(() => {
+            spreadsheetReader = null;
+            throw new Error("Chưa tải được thư viện đọc Excel. Vui lòng thử lại hoặc dùng CSV.");
+        });
+    }
+    return spreadsheetReader;
+}
+
 async function readBatchFile(file) {
     const ext = file.name.split(".").pop().toLowerCase();
     if (ext === "csv" || ext === "txt") {
@@ -72,12 +92,11 @@ async function readBatchFile(file) {
         return parseDelimited(text, separator);
     }
     if (ext === "xlsx" || ext === "xls") {
-        if (!window.XLSX)
-            throw new Error("Chưa tải được thư viện đọc Excel. Vui lòng thử lại hoặc dùng CSV.");
-        const workbook = window.XLSX.read(await file.arrayBuffer(), { type: "array" });
+        const reader = await loadSpreadsheetReader();
+        const workbook = reader.read(await file.arrayBuffer(), { type: "array" });
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         if (!sheet) throw new Error("Không tìm thấy trang tính.");
-        return window.XLSX.utils.sheet_to_json(sheet, {
+        return reader.utils.sheet_to_json(sheet, {
             header: 1,
             defval: "",
             blankrows: false,

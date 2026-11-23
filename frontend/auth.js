@@ -1,23 +1,61 @@
 const BREASTCARE_API = "https://breast-cancer-da2-api.onrender.com";
 const BREASTCARE_SESSION_KEY = "bc_session_token";
+const BREASTCARE_PROFILE_KEY = "bc_verified_profile";
+const PROFILE_REFRESH_MS = 5 * 60 * 1000;
 const IDENTITY_CENTER = "https://identity-center.onrender.com";
 let breastCareUser = null;
+let pageSessionToken = null;
+let profileRefresh = null;
 
-function fetchBreastCare(path, options = {}) {
-    const token = sessionStorage.getItem(BREASTCARE_SESSION_KEY);
+async function fetchBreastCare(path, options = {}) {
+    const token = activeSessionToken();
     const headers = new Headers(options.headers);
     if (token) headers.set("Authorization", `Bearer ${token}`);
-    return fetch(BREASTCARE_API + path, { ...options, headers, cache: "no-store" });
+    const response = await fetch(BREASTCARE_API + path, { ...options, headers, cache: "no-store" });
+    const needsActiveSession = path === "/account/profile" || !path.startsWith("/account/");
+    if (response.status === 401 && needsActiveSession && token === activeSessionToken()) {
+        returnToSignIn();
+    }
+    return response;
 }
 
 function clearBreastCareSession() {
     sessionStorage.removeItem(BREASTCARE_SESSION_KEY);
+    sessionStorage.removeItem(BREASTCARE_PROFILE_KEY);
     sessionStorage.removeItem("bc_user");
     sessionStorage.removeItem("bc_launch_attempt");
     breastCareUser = null;
+    pageSessionToken = null;
+}
+
+function activeSessionToken() {
+    return sessionStorage.getItem(BREASTCARE_SESSION_KEY);
+}
+
+function readVerifiedProfile(token) {
+    try {
+        const cached = JSON.parse(sessionStorage.getItem(BREASTCARE_PROFILE_KEY));
+        if (cached?.token === token && cached.user?.sub && Number.isFinite(cached.checkedAt)) {
+            return cached;
+        }
+    } catch {
+        // A missing or invalid cache is rebuilt after a successful profile request.
+    }
+    return null;
+}
+
+function storeVerifiedProfile(token, user, checkedAt = Date.now()) {
+    sessionStorage.setItem(BREASTCARE_PROFILE_KEY, JSON.stringify({ token, user, checkedAt }));
+}
+
+function returnToSignIn() {
+    clearBreastCareSession();
+    document.body.classList.remove("account-ready");
+    location.replace(IDENTITY_CENTER + "/login.html");
 }
 
 async function accountRequest(path, body) {
+    const requestToken = activeSessionToken();
     const options =
         body === undefined
             ? {}
@@ -34,7 +72,15 @@ async function accountRequest(path, body) {
         error.status = response.status;
         throw error;
     }
-    if (data.session_token) sessionStorage.setItem(BREASTCARE_SESSION_KEY, data.session_token);
+    if (data.session_token && activeSessionToken() === requestToken) {
+        const cached = readVerifiedProfile(requestToken);
+        sessionStorage.setItem(BREASTCARE_SESSION_KEY, data.session_token);
+        pageSessionToken = data.session_token;
+        sessionStorage.removeItem(BREASTCARE_PROFILE_KEY);
+        if (path === "password" && (breastCareUser || cached)) {
+            storeVerifiedProfile(data.session_token, breastCareUser || cached.user);
+        }
+    }
     return data;
 }
 
@@ -84,32 +130,76 @@ function bindAccountForm(form, message, submit) {
     });
 }
 
-async function initBreastCare() {
-    if (document.body.hasAttribute("data-account-launch") || location.pathname === "/") return;
-    const message = document.getElementById("accountLoading");
-    document.getElementById("ssoLogoutBtn")?.addEventListener("click", logoutBreastCare);
-    if (!sessionStorage.getItem(BREASTCARE_SESSION_KEY)) {
-        clearBreastCareSession();
-        location.replace(IDENTITY_CENTER + "/login.html");
-        return;
-    }
+function refreshBreastCareProfile(token) {
+    if (profileRefresh) return profileRefresh;
 
-    try {
-        const user = await accountRequest("profile");
-        document.body.classList.add("account-ready");
-        message.hidden = true;
-        showBreastCareAccount(user);
-    } catch (error) {
-        if (error.status === 401) {
-            clearBreastCareSession();
-            location.replace(IDENTITY_CENTER + "/login.html");
-        } else {
-            message.textContent = error.message || "Không thể xác minh phiên BreastCare.";
-        }
+    profileRefresh = accountRequest("profile")
+        .then((user) => {
+            if (token !== activeSessionToken()) return;
+            storeVerifiedProfile(token, user);
+            if (!breastCareUser) {
+                showBreastCareAccount(user);
+                return;
+            }
+
+            if (
+                breastCareUser.sub !== user.sub ||
+                breastCareUser.email !== user.email ||
+                breastCareUser.full_name !== user.full_name ||
+                breastCareUser.is_admin !== user.is_admin
+            ) {
+                location.reload();
+            }
+        })
+        .catch((error) => {
+            if (token !== activeSessionToken() || breastCareUser) return;
+            const message = document.getElementById("accountLoading");
+            message.hidden = false;
+            message.textContent = error.message || "Không thể tải thông tin tài khoản.";
+        })
+        .finally(() => {
+            profileRefresh = null;
+        });
+    return profileRefresh;
+}
+
+function refreshProfileIfNeeded(token, cached) {
+    const age = cached ? Date.now() - cached.checkedAt : Infinity;
+    if (age < 0 || age >= PROFILE_REFRESH_MS) {
+        refreshBreastCareProfile(token);
     }
 }
 
+function initBreastCare() {
+    if (document.body.hasAttribute("data-account-launch") || location.pathname === "/") return;
+    const token = activeSessionToken();
+    if (!token) {
+        returnToSignIn();
+        return;
+    }
+
+    pageSessionToken = token;
+    document.body.classList.add("account-ready");
+    document.getElementById("ssoLogoutBtn")?.addEventListener("click", logoutBreastCare);
+    const cached = readVerifiedProfile(token);
+    if (cached) showBreastCareAccount(cached.user);
+    refreshProfileIfNeeded(token, cached);
+}
+
 window.addEventListener("pageshow", (event) => {
-    if (event.persisted) location.reload();
+    if (!event.persisted) return;
+    if (document.body.hasAttribute("data-account-launch")) {
+        location.replace(IDENTITY_CENTER + "/");
+        return;
+    }
+    const token = activeSessionToken();
+    if (!token) {
+        returnToSignIn();
+    } else if (token !== pageSessionToken) {
+        document.body.classList.remove("account-ready");
+        location.reload();
+    } else {
+        refreshProfileIfNeeded(token, readVerifiedProfile(token));
+    }
 });
 document.addEventListener("DOMContentLoaded", initBreastCare);

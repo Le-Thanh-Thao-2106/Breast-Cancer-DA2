@@ -804,8 +804,7 @@ html[data-theme="dark"] .workspace {
     white-space: normal;
 }
 
-.workspace:not(.account-ready) > .app-container,
-.workspace.account-ready > #accountLoading {
+.workspace:not(.account-ready) > .app-container {
     display: none;
 }
 
